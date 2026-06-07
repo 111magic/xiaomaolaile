@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>喵了个咪 Agent 测试</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(135deg,#fff5eb 0%,#ffe8d6 100%);color:#333}
+
+.layout{display:flex;height:100vh;overflow:hidden}
+
+/* ===== 主聊天区 ===== */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{
+  padding:16px 20px;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(255,179,102,.3);display:flex;align-items:center;gap:12px;
+}
+.header .avatar{font-size:36px}
+.header .info h1{font-size:18px;font-weight:700}
+.header .info .sub{font-size:12px;color:#888;margin-top:2px}
+.header .status{margin-left:auto;font-size:12px;padding:4px 10px;border-radius:12px;font-weight:600}
+.status.online{background:#e8f5e9;color:#2e7d32}
+.status.offline{background:#fce4ec;color:#c62828}
+.status.connecting{background:#fff3e0;color:#ef6c00}
+
+.chat-area{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:75%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;position:relative}
+.msg .meta{font-size:10px;opacity:.6;margin-top:4px}
+.msg.sent{align-self:flex-end;background:#FF6B6B;color:#fff;border-bottom-right-radius:4px}
+.msg.recv{align-self:flex-start;background:#fff;border:1px solid rgba(255,179,102,.4);border-bottom-left-radius:4px}
+.msg.system{align-self:center;background:rgba(255,152,0,.12);color:#e65100;font-size:12px;max-width:90%;text-align:center}
+
+.input-bar{
+  padding:12px 16px;background:rgba(255,255,255,.9);border-top:1px solid rgba(255,179,102,.2);
+  display:flex;gap:8px;align-items:center;
+}
+.input-bar input{flex:1;padding:10px 14px;border:1px solid #eee;border-radius:20px;font-size:14px;outline:none}
+.input-bar button{padding:10px 18px;border:none;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-send{background:#FF6B6B;color:#fff}
+.btn-send:disabled{opacity:.4;cursor:default}
+.btn-test{background:#FF9800;color:#fff}
+.btn-action{background:#9C27B0;color:#fff}
+
+/* ===== 小猫舞台 ===== */
+.cat-stage{
+  padding:12px 20px;background:rgba(255,255,255,.6);border-bottom:1px solid rgba(255,179,102,.2);
+  display:flex;align-items:center;gap:16px;
+}
+.cat-ball{
+  width:72px;height:72px;border-radius:50%;background:#FFE0C0;border:2.5px solid #FFB366;
+  display:flex;align-items:center;justify-content:center;font-size:38px;
+  box-shadow:0 3px 12px rgba(0,0,0,.1);transition:transform .15s;flex-shrink:0;
+}
+.cat-ball.bounce{animation:bounce .7s cubic-bezier(.68,-.55,.265,1.55)}
+.cat-ball.doggy{background:#D4A574;border-color:#8B6914}
+.cat-ball.rolling{animation:roll 2s ease}
+.cat-ball.spinning{animation:spinner 2s ease}
+@keyframes bounce{0%{transform:scale(1)}30%{transform:scale(1.25)}50%{transform:scale(.85)}70%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes roll{0%{transform:rotate(0)}50%{transform:rotate(360deg)scale(.8)}100%{transform:rotate(720deg)scale(1)}}
+@keyframes spinner{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+.cat-stage-info{flex:1;min-width:0}
+.cat-stage-info .label{font-size:11px;color:#999}
+.cat-stage-info .hint{font-size:13px;color:#333;margin-top:2px}
+.cmd-bar{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.cmd-btn{
+  padding:5px 10px;border:1px solid rgba(255,107,107,.3);border-radius:14px;
+  background:#fff;font-size:11px;cursor:pointer;transition:background .15s;
+}
+.cmd-btn{display:inline-flex;align-items:center;gap:8px}
+.cmd-btn:hover{background:rgba(255,107,107,.1)}
+.cmd-btn:disabled{opacity:.4;cursor:default}
+.cmd-btn-icon{width:28px;height:28px;object-fit:contain;vertical-align:middle;border-radius:8px;background:rgba(255,255,255,.45)}
+.cat-face-gif{width:56px;height:56px;object-fit:contain;display:block;border-radius:12px;background:rgba(255,255,255,.35)}
+.log-item.cmd{border-left-color:#9C27B0}
+
+/* ===== 右侧观测面板 ===== */
+.panel{
+  width:320px;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);
+  border-left:1px solid rgba(255,179,102,.3);display:flex;flex-direction:column;
+  transition:width .25s,margin .25s;overflow:hidden;
+}
+.panel.collapsed{width:40px}
+.panel.collapsed .panel-body,.panel.collapsed .panel-header h2{display:none}
+
+.panel-toggle{
+  position:absolute;right:0;top:50%;transform:translateY(-50%);
+  width:24px;height:48px;background:#FF6B6B;color:#fff;border:none;border-radius:8px 0 0 8px;
+  cursor:pointer;font-size:14px;z-index:10;
+}
+.panel-wrap{position:relative;height:100%}
+
+.panel-header{padding:14px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:8px}
+.panel-header h2{font-size:14px;font-weight:700;flex:1}
+.panel-body{flex:1;overflow-y:auto;padding:12px 16px}
+
+.section{margin-bottom:16px}
+.section h3{font-size:11px;text-transform:uppercase;color:#999;margin-bottom:8px;letter-spacing:.5px}
+.kv{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f8f8f8}
+.kv .k{color:#888}
+.kv .v{font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.log-list{max-height:160px;overflow-y:auto;font-size:11px}
+.log-item{padding:6px 8px;margin-bottom:4px;border-radius:8px;background:#fafafa;border-left:3px solid #ddd}
+.log-item.sent{border-left-color:#FF6B6B}
+.log-item.recv{border-left-color:#4CAF50}
+.log-item .log-ts{color:#bbb;font-size:10px}
+.log-item .log-text{margin-top:2px;color:#333;word-break:break-all}
+
+.peer-card{
+  padding:10px;border-radius:10px;background:#f9f9f9;display:flex;align-items:center;gap:8px;
+}
+.peer-dot{width:8px;height:8px;border-radius:50%}
+.peer-dot.on{background:#4CAF50}
+.peer-dot.off{background:#ccc}
+
+.test-progress{font-size:11px;color:#FF9800;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="main">
+    <div class="header">
+      <div class="avatar" id="hdr-emoji">🐱</div>
+      <div class="info">
+        <h1 id="hdr-name">加载中...</h1>
+        <div class="sub" id="hdr-id">Agent ID: —</div>
+      </div>
+      <div class="status connecting" id="hdr-status">连接中</div>
+    </div>
+    <div class="cat-stage">
+      <div class="cat-ball" id="cat-ball"><span id="cat-face">😺</span></div>
+      <div class="cat-stage-info">
+        <div class="label">我的小猫</div>
+        <div class="hint" id="cat-hint">等待指令...</div>
+        <div class="cmd-bar" id="cmd-bar"></div>
+      </div>
+    </div>
+    <div class="chat-area" id="chat"></div>
+    <div class="input-bar">
+      <input id="msg-input" placeholder="输入消息..." disabled>
+      <button class="btn-action" id="btn-action-demo" disabled>🎮 动作演示</button>
+      <button class="btn-test" id="btn-retest" disabled>重跑对话</button>
+      <button class="btn-send" id="btn-send" disabled>发送</button>
+    </div>
+  </div>
+
+  <div class="panel-wrap">
+    <button class="panel-toggle" id="panel-toggle" title="折叠/展开观测面板">◀</button>
+    <div class="panel" id="obs-panel">
+      <div class="panel-header"><h2>🔭 开发者观测面板</h2></div>
+      <div class="panel-body">
+        <div class="section">
+          <h3>当前 Agent</h3>
+          <div class="kv"><span class="k">槽位</span><span class="v" id="obs-slot">—</span></div>
+          <div class="kv"><span class="k">名称</span><span class="v" id="obs-name">—</span></div>
+          <div class="kv"><span class="k">Agent ID</span><span class="v" id="obs-id">—</span></div>
+          <div class="kv"><span class="k">注册时间</span><span class="v" id="obs-reg">—</span></div>
+          <div class="kv"><span class="k">Token</span><span class="v" id="obs-token">—</span></div>
+        </div>
+        <div class="section">
+          <h3>对方 Agent</h3>
+          <div class="peer-card">
+            <div class="peer-dot off" id="peer-dot"></div>
+            <div>
+              <div style="font-size:13px;font-weight:600" id="peer-name">等待对方...</div>
+              <div style="font-size:10px;color:#999" id="peer-id">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <h3>已发送 <span id="sent-count">0</span></h3>
+          <div class="log-list" id="sent-log"></div>
+        </div>
+        <div class="section">
+          <h3>已接收 <span id="recv-count">0</span></h3>
+          <div class="log-list" id="recv-log"></div>
+        </div>
+        <div class="section">
+          <h3>动作指令 <span id="cmd-count">0</span></h3>
+          <div class="log-list" id="cmd-log"></div>
+        </div>
+        <div class="section">
+          <h3>自动测试</h3>
+          <div class="test-progress" id="test-progress">等待双方上线...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const SLOT = (params.get('agent') || 'A').toUpperCase();
+const DEMO_MODE = params.get('demo') === 'action';
+const API_BASE = location.origin;
+const WS_URL = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host;
+
+const STORAGE_KEY = 'agent_session_' + SLOT;
+
+const CMD_TYPES = [
+  { id: 'wave', mp4: '猫猫招手.mp4', label: '猫猫招手' },
+  { id: 'roll', mp4: '触摸反馈2打滚.mp4', label: '猫猫打滚' },
+  { id: 'spin', mp4: '猫猫跳跃.mp4', label: '猫猫跳跃' },
+  { id: 'dog', mp4: '犯贱隐标签1猛男小猫.mp4', label: '猛男小猫' },
+  { id: 'gift_fish', mp4: '待机状态盯着鱼缸·.mp4', label: '盯着鱼缸' },
+  { id: 'gift_yarn', mp4: '猫猫玩尾巴.mp4', label: '猫猫玩尾巴' },
+  { id: 'gift_mint', mp4: '猫猫玩球.mp4', label: '猫猫玩球' },
+];
+
+const ACTION_DEMO = ['wave', 'roll', 'spin', 'dog', 'gift_fish'];
+
+const TEST_SCRIPT = {
+  A: [
+    '你好，我是小胖',
+    '今天天气不错呀',
+    '你在做什么呢？',
+    '我们一起聊聊天吧',
+    '再见啦，下次再聊！',
+  ],
+  B: [
+    '收到，我是夜猫子',
+    '是啊，阳光暖暖的～',
+    '我在窗边打盹呢',
+    '好呀，我最喜欢聊天了',
+    '拜拜小胖，晚安！',
+  ],
+};
+
+let agent = null;
+let peer = null;
+let ws = null;
+let sentMessages = [];
+let recvMessages = [];
+let cmdLogs = [];
+let testRound = 0;
+let testRunning = false;
+let testTimer = null;
+let actionDemoRunning = false;
+let actionDemoTimer = null;
+
+const $ = (id) => document.getElementById(id);
+const catBall = () => $('cat-ball');
+const catFace = () => $('cat-face');
+
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString('zh-CN', { hour12: false });
+}
+
+function addChat(text, dir, ts) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + (dir === 'sent' ? 'sent' : dir === 'recv' ? 'recv' : 'system');
+  el.innerHTML = text + (dir !== 'system' ? `<div class="meta">${fmtTime(ts || Date.now())}</div>` : '');
+  $('chat').appendChild(el);
+  $('chat').scrollTop = $('chat').scrollHeight;
+}
+
+function updateObs() {
+  if (!agent) return;
+  $('obs-slot').textContent = agent.slot;
+  $('obs-name').textContent = agent.name;
+  $('obs-id').textContent = agent.agentId;
+  $('obs-reg').textContent = agent.registeredAt;
+  $('obs-token').textContent = agent.token.slice(0, 12) + '...';
+  $('hdr-name').textContent = agent.name + ' (Agent ' + agent.slot + ')';
+  $('hdr-id').textContent = 'Agent ID: ' + agent.agentId;
+  $('hdr-emoji').textContent = agent.emoji || '🐱';
+}
+
+function updatePeer() {
+  if (!peer) {
+    $('peer-name').textContent = '等待对方...';
+    $('peer-id').textContent = '—';
+    $('peer-dot').className = 'peer-dot off';
+    return;
+  }
+  $('peer-name').textContent = peer.name + ' (Agent ' + peer.slot + ')';
+  $('peer-id').textContent = peer.agentId || '—';
+  $('peer-dot').className = 'peer-dot ' + (peer.online ? 'on' : 'off');
+}
+
+function renderLogs() {
+  $('sent-count').textContent = sentMessages.length;
+  $('recv-count').textContent = recvMessages.length;
+  $('sent-log').innerHTML = sentMessages.map((m) =>
+    `<div class="log-item sent"><div class="log-ts">${fmtTime(m.ts)}</div><div class="log-text">${m.text}</div></div>`
+  ).join('') || '<div style="color:#ccc;font-size:11px">暂无</div>';
+  $('recv-log').innerHTML = recvMessages.map((m) =>
+    `<div class="log-item recv"><div class="log-ts">${fmtTime(m.ts)} → 来自 ${m.fromName}</div><div class="log-text">${m.text}</div></div>`
+  ).join('') || '<div style="color:#ccc;font-size:11px">暂无</div>';
+}
+
+function setStatus(text, cls) {
+  const el = $('hdr-status');
+  el.textContent = text;
+  el.className = 'status ' + cls;
+}
+
+function enableInput(on) {
+  $('msg-input').disabled = !on;
+  $('btn-send').disabled = !on;
+  $('btn-retest').disabled = !on || !peer?.online;
+  $('btn-action-demo').disabled = !on || !peer?.online || SLOT !== 'A';
+  document.querySelectorAll('.cmd-btn').forEach((b) => { b.disabled = !on || !peer?.online; });
+}
+
+function cmdLabel(id) {
+  return CMD_TYPES.find((c) => c.id === id)?.label || id;
+}
+
+function renderCmdBar() {
+  $('cmd-bar').innerHTML = CMD_TYPES.map((c) =>
+    `<button class="cmd-btn" data-cmd="${c.id}" disabled>
+      <video class="cmd-btn-icon" autoplay loop muted playsinline preload="metadata" src="assets/gifs/${encodeURIComponent(c.mp4)}"></video>
+      ${c.label}
+    </button>`
+  ).join('');
+  $('cmd-bar').querySelectorAll('.cmd-btn').forEach((btn) => {
+    btn.addEventListener('click', () => sendCommand([btn.dataset.cmd]));
+  });
+}
+
+function renderCmdLogs() {
+  $('cmd-count').textContent = cmdLogs.length;
+  $('cmd-log').innerHTML = cmdLogs.map((m) =>
+    `<div class="log-item cmd"><div class="log-ts">${fmtTime(m.ts)} ${m.dir === 'sent' ? '→ 发出' : '← 收到'}</div><div class="log-text">${m.text}</div></div>`
+  ).join('') || '<div style="color:#ccc;font-size:11px">暂无</div>';
+}
+
+function playCmdAnim(cmdId) {
+  const ball = catBall();
+  const face = catFace();
+  const meta = CMD_TYPES.find((c) => c.id === cmdId);
+  const mp4 = meta?.mp4 || '猫猫招手.mp4';
+  $('cat-hint').textContent = '执行：' + cmdLabel(cmdId);
+  face.innerHTML = `<video class="cat-face-gif" autoplay loop muted playsinline preload="auto" src="assets/gifs/${encodeURIComponent(mp4)}"></video>`;
+
+  switch (cmdId) {
+    case 'roll':
+      ball.classList.add('rolling');
+      setTimeout(() => { ball.classList.remove('rolling'); face.innerHTML = '<span>😺</span>'; $('cat-hint').textContent = '动作完成'; }, 6000);
+      break;
+    case 'spin':
+      ball.classList.add('spinning');
+      setTimeout(() => { ball.classList.remove('spinning'); face.innerHTML = '<span>😺</span>'; $('cat-hint').textContent = '动作完成'; }, 6000);
+      break;
+    case 'wave':
+      ball.classList.add('bounce');
+      setTimeout(() => { ball.classList.remove('bounce'); face.innerHTML = '<span>😺</span>'; $('cat-hint').textContent = '动作完成'; }, 6000);
+      break;
+    case 'dog':
+      ball.classList.add('doggy');
+      setTimeout(() => { ball.classList.remove('doggy'); face.innerHTML = '<span>😺</span>'; $('cat-hint').textContent = '变回小猫了'; }, 7000);
+      break;
+    default:
+      ball.classList.add('bounce');
+      setTimeout(() => { ball.classList.remove('bounce'); face.innerHTML = '<span>😺</span>'; $('cat-hint').textContent = '动作完成'; }, 6000);
+      break;
+  }
+}
+
+function playCommands(commands, fromName) {
+  let delay = 0;
+  commands.forEach((cmdId) => {
+    setTimeout(() => playCmdAnim(cmdId), delay);
+    delay += 4000;
+  });
+  const labels = commands.map(cmdLabel).join('、');
+  addChat(`🎮 ${fromName || '对方'} 让我的小猫：${labels}`, 'system');
+}
+
+function sendCommand(commands) {
+  if (!peer?.agentId || !ws || ws.readyState !== WebSocket.OPEN) return false;
+  const ts = Date.now();
+  const labels = commands.map(cmdLabel).join('、');
+  ws.send(JSON.stringify({
+    type: 'command',
+    data: { toAgentId: peer.agentId, commands },
+  }));
+  cmdLogs.push({ text: labels, dir: 'sent', ts });
+  renderCmdLogs();
+  addChat(`🎮 指令已发送：让 ${peer.name} 的小猫 ${labels}`, 'system');
+
+  let delay = 0;
+  commands.forEach((cmdId) => {
+    setTimeout(() => playCmdAnim(cmdId), delay);
+    delay += 4000;
+  });
+
+  return true;
+}
+
+async function register() {
+  const cached = sessionStorage.getItem(STORAGE_KEY);
+  if (cached) {
+    try {
+      const data = JSON.parse(cached);
+      if (data.token && data.agentId) {
+        agent = data;
+        updateObs();
+        addChat('📋 从 sessionStorage 恢复会话', 'system');
+        return;
+      }
+    } catch (_) {}
+  }
+
+  addChat('🔄 正在自动注册 Agent ' + SLOT + '...', 'system');
+  const res = await fetch(API_BASE + '/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slot: SLOT }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '注册失败');
+
+  agent = {
+    agentId: data.agentId,
+    slot: data.slot,
+    name: data.name,
+    emoji: data.emoji,
+    token: data.token,
+    registeredAt: data.registeredAt,
+  };
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(agent));
+  updateObs();
+  addChat(data.reused ? '✅ 复用已有注册信息，自动登录' : '✅ 注册成功，自动登录', 'system');
+}
+
+function connectWS() {
+  return new Promise((resolve, reject) => {
+    ws = new WebSocket(WS_URL);
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'auth', data: { token: agent.token } }));
+    };
+    ws.onmessage = (event) => {
+      const { type, data, ts } = JSON.parse(event.data);
+      switch (type) {
+        case 'auth_ok':
+          setStatus('在线', 'online');
+          enableInput(true);
+          addChat('🟢 WebSocket 已连接', 'system');
+          data.agents.forEach((a) => {
+            if (a.id !== agent.agentId) {
+              peer = { agentId: a.id, slot: a.slot, name: a.name, online: a.online };
+            }
+          });
+          updatePeer();
+          resolve();
+          break;
+        case 'auth_fail':
+          sessionStorage.removeItem(STORAGE_KEY);
+          reject(new Error(data.reason));
+          break;
+        case 'peer_status':
+          if (data.agentId !== agent.agentId) {
+            peer = { agentId: data.agentId, slot: data.slot, name: data.name, online: data.online };
+            updatePeer();
+            enableInput(true);
+            if (data.online) {
+              addChat('🟢 对方 ' + data.name + ' 上线了', 'system');
+              if (DEMO_MODE && SLOT === 'A') setTimeout(() => startActionDemo(), 1500);
+              else if (!DEMO_MODE) maybeStartAutoTest();
+            } else {
+              addChat('🔴 对方 ' + data.name + ' 下线了', 'system');
+              stopAutoTest();
+            }
+          }
+          break;
+        case 'receive_message':
+          recvMessages.push({ text: data.text, fromName: data.fromName, ts: ts || Date.now() });
+          renderLogs();
+          addChat(data.text, 'recv', ts);
+          if (testRunning) {
+            if (SLOT === 'B') schedulePeerReply();
+            else if (SLOT === 'A') scheduleNextSend();
+          }
+          break;
+        case 'message_sent':
+          break;
+        case 'receive_command':
+          cmdLogs.push({
+            text: (data.commands || []).map(cmdLabel).join('、') + ' ← ' + data.fromName,
+            dir: 'recv',
+            ts: ts || Date.now(),
+          });
+          renderCmdLogs();
+          playCommands(data.commands || [], data.fromName);
+          break;
+        case 'command_sent':
+          break;
+      }
+    };
+    ws.onclose = () => {
+      setStatus('离线', 'offline');
+      enableInput(false);
+      setTimeout(() => { connectWS().catch(() => {}); }, 3000);
+    };
+    ws.onerror = () => setStatus('连接失败', 'offline');
+  });
+}
+
+function sendMessage(text) {
+  if (!peer?.agentId || !ws || ws.readyState !== WebSocket.OPEN) return false;
+  const ts = Date.now();
+  ws.send(JSON.stringify({
+    type: 'message',
+    data: { toAgentId: peer.agentId, text },
+  }));
+  sentMessages.push({ text, ts });
+  renderLogs();
+  addChat(text, 'sent', ts);
+  return true;
+}
+
+function stopAutoTest() {
+  testRunning = false;
+  if (testTimer) { clearTimeout(testTimer); testTimer = null; }
+  $('test-progress').textContent = '测试已暂停（对方离线）';
+}
+
+function maybeStartAutoTest() {
+  if (DEMO_MODE || testRunning || !peer?.online) return;
+  testRound = 0;
+  testRunning = true;
+  if (SLOT === 'A') {
+    $('test-progress').textContent = '自动测试进行中...';
+    testTimer = setTimeout(() => sendTestRound(), 1500);
+  } else {
+    $('test-progress').textContent = '等待 Agent A 发起对话...';
+  }
+}
+
+function sendTestRound() {
+  if (!testRunning || SLOT !== 'A' || testRound >= TEST_SCRIPT.A.length) {
+    if (SLOT === 'A') finishAutoTest();
+    return;
+  }
+  const text = TEST_SCRIPT.A[testRound];
+  $('test-progress').textContent = `自动测试 第 ${testRound + 1}/${TEST_SCRIPT.A.length} 轮：发送中...`;
+  sendMessage(text);
+}
+
+function scheduleNextSend() {
+  testRound++;
+  if (testRound >= TEST_SCRIPT.A.length) {
+    finishAutoTest();
+    return;
+  }
+  testTimer = setTimeout(() => sendTestRound(), 1200);
+}
+
+function schedulePeerReply() {
+  const round = recvMessages.length - 1;
+  if (round < 0 || round >= TEST_SCRIPT.B.length) return;
+  testTimer = setTimeout(() => {
+    const text = TEST_SCRIPT.B[round];
+    $('test-progress').textContent = `自动回复 第 ${round + 1}/${TEST_SCRIPT.B.length} 轮`;
+    sendMessage(text);
+    if (round + 1 >= TEST_SCRIPT.B.length) finishAutoTest();
+  }, 1200);
+}
+
+function finishAutoTest() {
+  testRunning = false;
+  if (testTimer) { clearTimeout(testTimer); testTimer = null; }
+  const total = TEST_SCRIPT.A.length;
+  $('test-progress').textContent = '✅ 对话测试完成（' + total + ' 轮）';
+  if (SLOT === 'A' && peer?.online && !DEMO_MODE) {
+    setTimeout(() => startActionDemo(), 2000);
+  }
+}
+
+function startActionDemo() {
+  if (SLOT !== 'A' || !peer?.online || actionDemoRunning) return;
+  actionDemoRunning = true;
+  let i = 0;
+  addChat('🎮 开始动作演示：让小胖指挥夜猫子的小猫做动作', 'system');
+  $('test-progress').textContent = '🎮 动作演示进行中...';
+
+  function sendNext() {
+    if (i >= ACTION_DEMO.length) {
+      actionDemoRunning = false;
+      $('test-progress').textContent = '✅ 动作演示完成（' + ACTION_DEMO.length + ' 个动作）';
+      addChat('✅ 动作演示全部完成！', 'system');
+      return;
+    }
+    const cmd = ACTION_DEMO[i];
+    $('test-progress').textContent = `🎮 动作演示 ${i + 1}/${ACTION_DEMO.length}：${cmdLabel(cmd)}`;
+    sendCommand([cmd]);
+    i++;
+    actionDemoTimer = setTimeout(sendNext, 2500);
+  }
+  sendNext();
+}
+
+function startRetest() {
+  if (!peer?.online) return;
+  sentMessages = [];
+  recvMessages = [];
+  renderLogs();
+  $('chat').innerHTML = '';
+  testRound = 0;
+  testRunning = true;
+  addChat('🔄 重新开始自动测试', 'system');
+  if (SLOT === 'A') {
+    $('test-progress').textContent = '自动测试进行中...';
+    testTimer = setTimeout(() => sendTestRound(), 1000);
+  } else {
+    $('test-progress').textContent = '等待 Agent A 发起对话...';
+  }
+}
+
+$('btn-send').addEventListener('click', () => {
+  const text = $('msg-input').value.trim();
+  if (!text) return;
+  sendMessage(text);
+  $('msg-input').value = '';
+});
+$('msg-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('btn-send').click();
+});
+$('btn-retest').addEventListener('click', startRetest);
+$('btn-action-demo').addEventListener('click', startActionDemo);
+
+let panelOpen = true;
+$('panel-toggle').addEventListener('click', () => {
+  panelOpen = !panelOpen;
+  $('obs-panel').classList.toggle('collapsed', !panelOpen);
+  $('panel-toggle').textContent = panelOpen ? '◀' : '▶';
+});
+
+(async function boot() {
+  if (!['A', 'B'].includes(SLOT)) {
+    addChat('❌ 无效的 agent 参数，请使用 ?agent=A 或 ?agent=B', 'system');
+    return;
+  }
+  document.title = 'Agent ' + SLOT + ' — 喵了个咪';
+  renderCmdBar();
+  try {
+    await register();
+    await connectWS();
+    if (DEMO_MODE && SLOT === 'A') {
+      addChat('🎮 动作演示模式：跳过对话，直接开始', 'system');
+      setTimeout(() => startActionDemo(), 1500);
+    } else if (!DEMO_MODE) {
+      maybeStartAutoTest();
+    } else {
+      $('test-progress').textContent = '等待 Agent A 发起动作演示...';
+    }
+  } catch (e) {
+    addChat('❌ 启动失败: ' + e.message, 'system');
+    setStatus('错误', 'offline');
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+*.log
+llm-key.txt
+dist/
+*.dmg
+*.exe
+build/

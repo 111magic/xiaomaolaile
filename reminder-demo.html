@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🐱 日程提醒弹窗演示</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f0eb;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    user-select: none;
+  }
+
+  /* ====== App 模拟 ====== */
+  .phone {
+    width: 375px; height: 750px;
+    background: #FFF5F5;
+    border-radius: 40px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+
+  /* 主界面 */
+  .home {
+    padding: 60px 24px 0;
+    text-align: center;
+  }
+  .home .greeting { font-size: 15px; color: #999; }
+  .home .name { font-size: 24px; font-weight: 700; color: #333; margin: 4px 0 24px; }
+  .home .tips {
+    background: #fff; border-radius: 16px; padding: 16px;
+    text-align: left; font-size: 13px; color: #666; line-height: 2;
+  }
+
+  /* 猫头 */
+  .cat-head {
+    position: absolute; bottom: 100px; right: 20px;
+    width: 70px; height: 70px; border-radius: 35px;
+    background: #FFE0C0; border: 2px solid #FFB366;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 35px;
+    animation: blink 3s infinite;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10;
+    cursor: pointer;
+  }
+  .cat-head:active { transform: scale(1.1); }
+
+  @keyframes blink {
+    0%, 90%, 100% { opacity: 1; }
+    95% { opacity: 0.3; }
+  }
+
+  /* ====== 按钮区 ====== */
+  .controls {
+    margin-top: 24px;
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  }
+  .controls button {
+    padding: 12px 24px; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .controls button:active { transform: scale(0.96); }
+  .btn-demo1 { background: #FF6B6B; color: #fff; }
+  .btn-demo2 { background: #4CAF50; color: #fff; }
+  .btn-demo3 { background: #FF9800; color: #fff; }
+  .btn-reset { background: #e0e0e0; color: #666; }
+
+  /* ====== 霸屏遮罩 ====== */
+  .overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.3s;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* 弹窗卡片 */
+  .dialog {
+    background: #fff; border-radius: 24px; padding: 28px 24px 24px;
+    width: 300px; text-align: center;
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+  }
+  @keyframes popIn {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  /* 猫探头 */
+  .cat-peek {
+    font-size: 60px;
+    margin-bottom: 4px;
+    animation: peekBounce 0.6s ease-out;
+  }
+  @keyframes peekBounce {
+    0% { transform: translateY(40px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0); }
+  }
+
+  /* 喵语 */
+  .meow-text {
+    font-size: 20px; color: #FF6B6B; font-weight: 700;
+    font-style: italic; margin-bottom: 8px;
+    animation: meowFade 0.5s 0.3s both;
+  }
+  @keyframes meowFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* 翻译气泡 */
+  .bubble {
+    background: #FFF5F5; border-radius: 14px;
+    padding: 14px 18px; margin-bottom: 20px;
+    animation: meowFade 0.5s 0.5s both;
+  }
+  .bubble .label { font-size: 11px; color: #FFB366; font-weight: 600; margin-bottom: 4px; }
+  .bubble .task { font-size: 18px; font-weight: 700; color: #333; }
+  .bubble .time-badge {
+    display: inline-block; background: #FFF0E0; border-radius: 6px;
+    padding: 2px 8px; font-size: 12px; color: #FF9800; font-weight: 600; margin-top: 6px;
+  }
+
+  /* 按钮 */
+  .btn-row { display: flex; gap: 10px; animation: meowFade 0.5s 0.7s both; }
+  .btn-done {
+    flex: 1; padding: 14px; border: none; border-radius: 14px;
+    background: #4CAF50; color: #fff; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .btn-snooze {
+    flex: 1; padding: 14px; border: none; border-radius: 14px;
+    background: #FF9800; color: #fff; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .btn-done:active, .btn-snooze:active { transform: scale(0.95); }
+
+  /* 冲突弹窗 */
+  .conflict-note {
+    background: #FFF8E1; border-radius: 10px; padding: 10px;
+    margin-bottom: 16px; font-size: 12px; color: #E65100;
+    border-left: 3px solid #FF9800;
+    text-align: left; line-height: 1.6;
+  }
+
+  /* Toast */
+  .toast {
+    position: absolute; bottom: 40px; left: 24px; right: 24px;
+    background: #333; color: #fff; border-radius: 12px;
+    padding: 12px 16px; text-align: center; font-size: 14px;
+    z-index: 200; animation: toastIn 0.4s, toastOut 0.3s 2s both;
+  }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(20px); } }
+
+  .label-row { font-size: 12px; color: #999; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+
+  <!-- 主界面 -->
+  <div class="home">
+    <div class="greeting">☀️ 你好，铲屎官</div>
+    <div class="name" id="userName">小咪</div>
+    <div class="tips">
+      👆 双击猫头 → 拎出猫咪<br>
+      💬 点击猫咪 → AI聊天<br>
+      ⏰ 日程到点 → 霸屏弹窗<br><br>
+      👇 点击下方按钮触发提醒演示
+    </div>
+  </div>
+
+  <!-- 猫头 -->
+  <div class="cat-head" ondblclick="dblclickCat()" onclick="clickCat()">😺</div>
+
+  <!-- 弹窗容器（初始隐藏） -->
+  <div id="reminderOverlay"></div>
+
+  <!-- Toast -->
+  <div id="toastContainer"></div>
+</div>
+
+<!-- 控制按钮 -->
+<div class="controls">
+  <button class="btn-demo1" onclick="triggerReminder('喝咖啡休息', '14:30')">
+    ⏰ 日程提醒演示
+  </button>
+  <button class="btn-demo2" onclick="triggerConflict('喝咖啡休息', '14:30', '开会', '15:00')">
+    ⚠️ 延时冲突演示
+  </button>
+  <button class="btn-demo3" onclick="triggerNightPlan()">
+    🌙 每日规划演示
+  </button>
+  <button class="btn-reset" onclick="location.reload()">
+    ↻ 重新开始
+  </button>
+</div>
+<div class="label-row">点击按钮触发不同的日程提醒效果</div>
+
+<script>
+// ====== 喵语生成 ======
+function meow() {
+  const n = 2 + Math.floor(Math.random() * 7); // 2-8个喵
+  return '喵'.repeat(n);
+}
+
+// ====== Toast ======
+function showToast(msg) {
+  const t = document.getElementById('toastContainer');
+  t.innerHTML = `<div class="toast">${msg}</div>`;
+  setTimeout(() => t.innerHTML = '', 2500);
+}
+
+// ====== 双击猫头 ======
+function dblclickCat() {
+  showToast('🐱 猫咪被拎出来了！(双击猫头)');
+}
+
+function clickCat() {
+  showToast('💬 打开AI聊天 (点击猫咪)');
+}
+
+// ====== 日程提醒弹窗 ======
+function triggerReminder(task, time) {
+  const overlay = document.getElementById('reminderOverlay');
+  overlay.innerHTML = `
+    <div class="overlay" onclick="closeOverlay()">
+      <div class="dialog" onclick="event.stopPropagation()">
+        <div class="cat-peek">😺</div>
+        <div class="meow-text">${meow()}！</div>
+        <div class="bubble">
+          <div class="label">⏰ 日程到点提醒</div>
+          <div class="task">「${task}」</div>
+          <div class="time-badge">🕐 ${time}</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-done" onclick="handleDone('${task}')">完成了 ✓</button>
+          <button class="btn-snooze" onclick="handleSnooze('${task}', '${time}')">延时 ⏰</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ====== 延时 → 冲突 ======
+function handleSnooze(task, time) {
+  const [h, m] = time.split(':').map(Number);
+  const nh = m + 15 >= 60 ? h + 1 : h;
+  const nm = (m + 15) % 60;
+  const newTime = `${String(nh).padStart(2,'0')}:${String(nm).padStart(2,'0')}`;
+
+  showToast(`⏰ 「${task}」已延时至 ${newTime}`);
+
+  const overlay = document.getElementById('reminderOverlay');
+  overlay.innerHTML = `
+    <div class="overlay" onclick="closeOverlay()">
+      <div class="dialog" onclick="event.stopPropagation()">
+        <div class="cat-peek">😺</div>
+        <div class="meow-text">${meow()}！</div>
+        <div class="bubble">
+          <div class="label">✅ 已延时</div>
+          <div class="task">「${task}」</div>
+          <div class="time-badge" style="background:#E8F5E9;color:#4CAF50;">已延至 ${newTime}</div>
+        </div>
+        <button class="btn-done" style="width:100%;margin-top:8px;" onclick="closeOverlay()">
+          好的，知道了
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ====== 冲突弹窗（延时导致下个任务冲突） ======
+let conflictStage = 0;
+
+function triggerConflict(task1, time1, task2, time2) {
+  conflictStage = 0;
+  const overlay = document.getElementById('reminderOverlay');
+  overlay.innerHTML = `
+    <div class="overlay">
+      <div class="dialog" onclick="event.stopPropagation()" style="width:320px;">
+        <div class="cat-peek">😿</div>
+        <div class="meow-text" id="conflictMeow">${meow()}！</div>
+        <div class="bubble" id="conflictBubble">
+          <div class="label">⏰ 日程到点提醒</div>
+          <div class="task">「${task1}」</div>
+          <div class="time-badge">🕐 ${time1}</div>
+        </div>
+        <div class="btn-row" id="conflictBtns">
+          <button class="btn-done" onclick="handleConflict('${task1}','${time1}','${task2}','${time2}')">完成了 ✓</button>
+          <button class="btn-snooze" onclick="handleConflictSnooze('${task1}','${time1}','${task2}','${time2}')">延时 ⏰</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function handleConflict(task1, time1, task2, time2) {
+  showToast(`✅ 「${task1}」已完成！`);
+  closeOverlay();
+}
+
+function handleConflictSnooze(task1, time1, task2, time2) {
+  if (conflictStage === 0) {
+    // 第一次：显示冲突
+    document.getElementById('conflictMeow').textContent = meow() + '！';
+    document.getElementById('conflictBubble').innerHTML = `
+      <div class="label">⚠️ 日程冲突</div>
+      <div class="conflict-note">
+        <strong>延时后产生冲突：</strong><br>
+        「${task1}」延至 <b>14:45</b><br>
+        与 ${time2}「${task2}」仅隔 <b>15分钟</b>
+      </div>
+      <div style="font-size:13px;color:#666;text-align:left;padding:8px;background:#f8f8f8;border-radius:8px;">
+        🐱 <b>AI建议方案：</b><br>
+        1. ${time1}「${task1}」不变<br>
+        2. ${time2}「${task2}」推至 <b>14:45</b><br>
+        3. 后续任务顺延15分钟
+      </div>
+    `;
+    document.getElementById('conflictBtns').innerHTML = `
+      <button class="btn-done" style="flex:1;" onclick="acceptAISchedule('${task1}','${task2}')">
+        接受AI方案 🤖
+      </button>
+      <button class="btn-snooze" style="flex:1;" onclick="closeOverlay()">
+        手动调整 ✋
+      </button>
+    `;
+    conflictStage++;
+  }
+}
+
+function acceptAISchedule(task1, task2) {
+  document.getElementById('conflictMeow').textContent = '喵～';
+  document.getElementById('conflictBubble').innerHTML = `
+    <div class="bubble">
+      <div class="label">✅ 日程已重新安排</div>
+      <div class="task" style="font-size:14px;">
+        已按AI建议调整完毕，<br>铲屎官请放心～
+      </div>
+    </div>
+  `;
+  document.getElementById('conflictBtns').innerHTML = `
+    <button class="btn-done" style="width:100%;" onclick="closeOverlay()">好的，谢谢猫咪！😸</button>
+  `;
+  showToast('🤖 AI已重新安排日程');
+}
+
+// ====== 每日规划弹窗 ======
+function triggerNightPlan() {
+  const items = ['手机', '钥匙', '钱包', '充电器', '电脑', '水杯'];
+  const overlay = document.getElementById('reminderOverlay');
+
+  const genTime = (h, m) => `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+
+  overlay.innerHTML = `
+    <div class="overlay">
+      <div class="dialog" onclick="event.stopPropagation()" style="width:330px;max-height:580px;overflow-y:auto;">
+        <div class="cat-peek">😺</div>
+        <div style="font-size:20px;font-weight:700;color:#333;margin-bottom:2px;">🌙 明日规划</div>
+        <div style="font-size:13px;color:#999;margin-bottom:16px;">2026年6月7日 星期四</div>
+
+        <!-- AI推荐按钮 -->
+        <button style="width:100%;padding:10px;border:none;border-radius:10px;background:#E8F5E9;color:#4CAF50;font-size:14px;font-weight:600;margin-bottom:16px;cursor:pointer;"
+          onclick="generateAISchedule(this)">
+          🤖 AI推荐脑科学日程
+        </button>
+
+        <!-- 日程区 -->
+        <div style="text-align:left;margin-bottom:16px;">
+          <div style="font-size:14px;font-weight:600;color:#333;margin-bottom:8px;">📋 日程安排</div>
+          <div id="nightSchedules" style="font-size:13px;color:#999;">
+            点击上方 AI 推荐按钮生成，<br>或手动输入 👇
+          </div>
+        </div>
+
+        <!-- 手动添加日程 -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;">
+          <input id="nightTaskInput" placeholder="任务名称" style="flex:1;padding:8px 12px;border:1px solid #eee;border-radius:8px;font-size:13px;">
+          <input id="nightTimeInput" placeholder="时间" value="09:00" style="width:70px;padding:8px 12px;border:1px solid #eee;border-radius:8px;font-size:13px;">
+          <button onclick="addNightTask()" style="padding:8px 16px;background:#FF6B6B;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">+</button>
+        </div>
+
+        <!-- 物品清单 -->
+        <div style="text-align:left;">
+          <div style="font-size:14px;font-weight:600;color:#333;margin-bottom:8px;">🎒 明日携带物品</div>
+          <div id="nightItems" style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${items.map((item, i) => `
+              <div class="item-chip" style="padding:6px 12px;background:#f0f0f0;border-radius:16px;font-size:12px;color:#666;cursor:pointer;"
+                onclick="toggleChip(this)">
+                ⬜ ${item}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 完成 -->
+        <button onclick="closeOverlay()" style="width:100%;padding:14px;background:#FF6B6B;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;margin-top:20px;cursor:pointer;">
+          完成规划 ✓
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function generateAISchedule(btn) {
+  btn.textContent = '🤖 AI生成中...';
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+
+  setTimeout(() => {
+    const container = document.getElementById('nightSchedules');
+    const cycles = [
+      { t: '08:00', n: '专注工作 ①' },
+      { t: '09:30', n: '休息充电 ☕' },
+      { t: '09:45', n: '专注工作 ②' },
+      { t: '11:15', n: '休息充电 ☕' },
+      { t: '11:30', n: '专注工作 ③' },
+      { t: '13:00', n: '午休时间 🍱' },
+      { t: '14:00', n: '专注工作 ④' },
+      { t: '15:30', n: '休息伸展 🧘' },
+    ];
+    container.innerHTML = cycles.map(c =>
+      `<div style="display:flex;align-items:center;padding:6px 0;gap:8px;border-bottom:1px solid #f5f5f5;">
+        <span style="background:#FFF0E0;border-radius:6px;padding:2px 8px;font-size:12px;color:#FF9800;font-weight:600;">${c.t}</span>
+        <span style="font-size:13px;color:#333;">${c.n}</span>
+        <span style="margin-left:auto;font-size:11px;color:#4CAF50;">🧠 脑科学</span>
+      </div>`
+    ).join('');
+    btn.textContent = '✅ AI已生成 90min工作+15min休息';
+    btn.style.background = '#C8E6C9';
+    showToast('🤖 AI脑科学日程已生成');
+  }, 1200);
+}
+
+function addNightTask() {
+  const taskInput = document.getElementById('nightTaskInput');
+  const timeInput = document.getElementById('nightTimeInput');
+  if (!taskInput.value.trim()) return;
+
+  const container = document.getElementById('nightSchedules');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;align-items:center;padding:6px 0;gap:8px;border-bottom:1px solid #f5f5f5;';
+  div.innerHTML = `
+    <span style="background:#FFF0E0;border-radius:6px;padding:2px 8px;font-size:12px;color:#FF9800;font-weight:600;">${timeInput.value || '09:00'}</span>
+    <span style="font-size:13px;color:#333;">${taskInput.value}</span>
+    <span style="margin-left:auto;cursor:pointer;font-size:14px;color:#ccc;" onclick="this.parentElement.remove()">✕</span>
+  `;
+  container.appendChild(div);
+  taskInput.value = '';
+  showToast('📋 日程已添加');
+}
+
+function toggleChip(el) {
+  const text = el.textContent.trim();
+  if (text.startsWith('⬜')) {
+    el.textContent = text.replace('⬜', '✅');
+    el.style.background = '#E8F5E9';
+    el.style.color = '#4CAF50';
+  } else {
+    el.textContent = text.replace('✅', '⬜');
+    el.style.background = '#f0f0f0';
+    el.style.color = '#666';
+  }
+}
+
+// ====== 关闭弹窗 ======
+function closeOverlay() {
+  document.getElementById('reminderOverlay').innerHTML = '';
+  conflictStage = 0;
+}
+
+// ====== 完成日程 ======
+function handleDone(task) {
+  showToast(`✅ 「${task}」已完成！猫咪给你点赞～`);
+  closeOverlay();
+}
+
+// ====== 页面加载 ======
+console.log('🐱 猫咪日程提醒弹窗演示已就绪');
+console.log('  点击下方按钮体验：');
+console.log('  ① 日程提醒弹窗 → 霸屏遮罩 + 喵语+完成/延时');
+console.log('  ② 延时冲突演示 → AI建议重排日程');
+console.log('  ③ 每日规划演示 → 21:00 明日规划 + AI推荐');
+</script>
+
+</body>
+</html>

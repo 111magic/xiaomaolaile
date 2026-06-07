@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' file:; img-src 'self' file: data:; connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:* https://api.siliconflow.cn:*; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>猫咪桌面宠物</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:transparent;overflow:hidden;user-select:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+
+/* ====== 小猫模式 ====== */
+#small-cat{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+#cat-ball{
+  width:100px;height:100px;border-radius:0;
+  background:transparent;border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:transform .15s;
+  position:relative;
+}
+#cat-ball:hover{transform:scale(1.15)}
+#cat-ball:active{transform:scale(.90)}
+#cat-ball.bounce{animation:bounce .7s cubic-bezier(.68,-.55,.265,1.55)}
+@keyframes bounce{0%{transform:scale(1)}30%{transform:scale(1.25)}50%{transform:scale(.85)}70%{transform:scale(1.08)}100%{transform:scale(1)}}
+#cat-ball.doggy{}
+#cat-ball.walking{animation:walkWobble .4s ease-in-out infinite}
+@keyframes walkWobble{0%,100%{transform:translateY(-2px)}50%{transform:translateY(2px)}}
+
+#cat-img,#big-cat-img{-webkit-user-drag:none;user-select:none}
+#cat-img{width:100px;height:100px;object-fit:contain;border-radius:0;display:block}
+#cat-hint{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(255,255,255,.7);white-space:nowrap;background:rgba(0,0,0,.5);padding:1px 7px;border-radius:6px;opacity:0;transition:opacity .3s}
+#cat-ball:hover #cat-hint{opacity:1}
+
+/* 眨眼（GIF自带） */
+.face.blink{}
+
+/* ====== 拎出大模式 ====== */
+#big-cat{display:none;width:100%;height:100%;position:relative;flex-direction:column}
+#big-cat.show{display:flex}
+
+/* 猫身区 */
+#cat-body{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+#big-cat-img{width:130px;height:130px;object-fit:contain;display:block;cursor:pointer}
+
+/* ========== 漫画气泡（猫头顶上方，斜尾巴指向猫） ========== */
+#speech-bubble{
+  position:absolute;
+  /* 放在窗口最上方，不进入猫身区域 */
+  top:5px; left:8px; right:8px;
+  background:rgba(255,255,255,.85);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-radius:18px;
+  padding:10px 16px;
+  border:2px solid rgba(255,179,102,.5);
+  text-align:left;
+  box-shadow:0 4px 16px rgba(0,0,0,.08);
+  display:none;
+  z-index:50;
+  min-width:120px;
+}
+/* 斜尾巴：一个旋转45度的小方块，从气泡底部斜指向下方猫咪 */
+#speech-bubble::after{
+  content:'';
+  position:absolute;
+  /* 尾巴放在气泡左下角外侧，45度旋转形成斜箭头 */
+  bottom:-8px; left:25%;
+  width:14px; height:14px;
+  background:rgba(255,255,255,.85);
+  border-right:2px solid rgba(255,179,102,.5);
+  border-bottom:2px solid rgba(255,179,102,.5);
+  border-radius:0 0 3px 0;
+  transform:rotate(45deg);
+  z-index:-1;
+}
+#speech-bubble .mew{
+  font-size:15px;color:#FF6B6B;font-weight:700;font-style:italic;
+  display:block;margin-bottom:2px;
+}
+#speech-bubble .trs{
+  font-size:14px;color:#333;line-height:1.5;
+}
+
+/* 气泡显示状态 */
+#speech-bubble.visible{display:block}
+/* 气泡出现动画 */
+#speech-bubble.pop{
+  display:block;
+  animation:bubblePop .35s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes bubblePop{
+  0%{opacity:0;transform:translateY(8px)scale(.85)}
+  100%{opacity:1;transform:translateY(0)scale(1)}
+}
+
+/* 底部操作栏 */
+#action-bar{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 10px;
+  background:rgba(255,255,255,.9);border-radius:18px;
+  margin:0 8px 8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  z-index:60;
+}
+#action-bar input{flex:1;padding:8px 12px;border:1px solid#eee;border-radius:16px;font-size:13px;outline:none;color:#333;min-width:0;background:rgba(255,255,255,.7)}
+#action-bar button{padding:8px 14px;border:none;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-send{background:#FF6B6B;color:#fff}
+.btn-back{background:#f0f0f0;color:#666;font-size:16px!important;padding:6px 10px!important}
+.btn-demo{background:#FF9800;color:#fff}
+.btn-menu{background:#fff;border:1px solid#eee!important;font-size:15px!important;padding:6px 10px!important}
+
+/* ====== 面板 ====== */
+#panel-overlay{display:none;position:absolute;inset:0;z-index:100;background:rgba(0,0,0,.12);align-items:center;justify-content:center}
+#panel-overlay.open{display:flex}
+#panel-box{background:rgba(255,255,255,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:18px;padding:16px;width:90%;max-height:260px;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+#panel-box .ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+#panel-box .ph .pt{font-size:14px;font-weight:700;color:#333}
+#panel-box .ph .px{width:24px;height:24px;border-radius:50%;background:#f0f0f0;border:none;font-size:13px;cursor:pointer;color:#999}
+
+/* 朋友圈 post */
+.post{background:rgba(255,255,255,.8);border-radius:12px;padding:10px;margin-bottom:8px}
+.post .phead{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.post .phead .av{font-size:18px}
+.post .phead .nm{font-size:12px;font-weight:600;color:#333}
+.post .phead .tm{font-size:10px;color:#ccc;margin-left:auto}
+.post .ptxt{font-size:12px;color:#333;line-height:1.4;margin-bottom:4px}
+.post .plk{font-size:10px;color:#999;cursor:pointer;border-top:1px solid#eee;padding-top:4px}
+
+/* 好友/日程 */
+.fr{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid#f5f5f5}
+.fr .fav{font-size:22px}
+.fr .fnm{flex:1;font-size:12px;font-weight:500;color:#333}
+.fr .fact{font-size:10px;color:#FF6B6B;font-weight:600;cursor:pointer;padding:2px 7px;border:1px solid#FF6B6B;border-radius:8px}
+.sch{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid#f5f5f5}
+.sch .stm{background:#FFF0E0;border-radius:5px;padding:2px 6px;font-size:11px;color:#FF9800;font-weight:600;min-width:40px;text-align:center}
+.sch .stt{flex:1;font-size:12px;color:#333}
+.sch .stt.done{text-decoration:line-through;color:#ccc}
+.sch .sdel{color:#ccc;cursor:pointer;font-size:14px}
+
+.inprow{display:flex;gap:5px;margin-top:6px}
+.inprow input{flex:1;padding:5px 8px;border:1px solid#eee;border-radius:8px;font-size:11px;outline:none;color:#333;background:rgba(255,255,255,.7)}
+.inprow button{padding:5px 10px;border:none;border-radius:8px;background:#FF6B6B;color:#fff;font-size:11px;font-weight:600;cursor:pointer}
+
+.menu-row{display:flex;flex-wrap:wrap;gap:6px}
+.menu-btn{padding:8px 14px;border:none;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;color:#fff}
+
+/* 彩蛋 */
+#egg-overlay{display:none;position:absolute;inset:0;z-index:200;background:rgba(0,0,0,.15);align-items:center;justify-content:center}
+#egg-overlay.show{display:flex}
+#egg-box{background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-radius:18px;padding:18px;width:250px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+#egg-box .egemoji{font-size:44px;margin-bottom:4px}
+#egg-box .egmeow{font-size:15px;color:#FF6B6B;font-weight:700;font-style:italic;margin-bottom:4px}
+#egg-box .egtr{font-size:12px;color:#333;background:rgba(255,245,245,.8);border-radius:8px;padding:8px;margin-bottom:10px}
+#egg-box .egbtn{width:100%;margin-top:4px;padding:10px;border:none;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer}
+#egg-box .egbtn.opt1{background:#FF6B6B;color:#fff}
+#egg-box .egbtn.opt2{background:#888;color:#fff}
+
+/* ====== 指令多选菜单 ====== */
+#cmd-overlay{display:none;position:absolute;inset:0;z-index:150;background:rgba(0,0,0,.1);align-items:center;justify-content:center}
+#cmd-overlay.show{display:flex}
+#cmd-menu{
+  background:rgba(255,255,255,.95);backdrop-filter:blur(10px);
+  border-radius:16px;padding:14px;width:280px;max-height:320px;overflow-y:auto;
+  box-shadow:0 8px 30px rgba(0,0,0,.12);
+}
+#cmd-menu .cm-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+#cmd-menu .cm-header .cm-title{font-size:14px;font-weight:700;color:#333}
+#cmd-menu .cm-header .cm-close{width:22px;height:22px;border-radius:50%;background:#f0f0f0;border:none;font-size:12px;cursor:pointer;color:#999}
+.cmd-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:10px;cursor:pointer;
+  transition:background .15s;margin-bottom:2px;
+}
+.cmd-item:hover{background:rgba(255,107,107,.08)}
+.cmd-item .cmd-emoji{font-size:22px;width:30px;text-align:center}
+.cmd-item{display:flex;align-items:center;gap:10px}
+.cmd-item .cmd-gif{width:36px;height:36px;object-fit:contain;display:block;border-radius:10px;background:rgba(255,255,255,.45)}
+.cmd-item .cmd-label{flex:1;font-size:13px;font-weight:500;color:#333}
+.cmd-item .cmd-desc{font-size:10px;color:#999}
+.cmd-item.sel{background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.3)}
+.cmd-item .cmd-check{font-size:16px;color:#FF6B6B;display:none}
+.cmd-item.sel .cmd-check{display:block}
+.cmd-send-btn{
+  width:100%;margin-top:10px;padding:10px;border:none;border-radius:12px;
+  background:#FF6B6B;color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+}
+.cmd-send-btn:disabled{opacity:.4;cursor:default}
+
+/* 传话弹窗 */
+#relay-overlay{display:none;position:absolute;inset:0;z-index:150;background:rgba(0,0,0,.1);align-items:center;justify-content:center}
+#relay-overlay.show{display:flex}
+#relay-box{
+  background:rgba(255,255,255,.95);backdrop-filter:blur(10px);
+  border-radius:16px;padding:16px;width:280px;
+  box-shadow:0 8px 30px rgba(0,0,0,.12);
+}
+#relay-box .rh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+#relay-box .rh .rt{font-size:14px;font-weight:700;color:#333}
+#relay-box .rh .rx{width:22px;height:22px;border-radius:50%;background:#f0f0f0;border:none;font-size:12px;cursor:pointer;color:#999}
+#relay-box textarea{
+  width:100%;height:80px;padding:10px;border:1px solid#eee;border-radius:10px;
+  font-size:13px;outline:none;color:#333;resize:none;font-family:inherit;
+  background:rgba(255,255,255,.7);
+}
+#relay-box .relay-send{
+  width:100%;margin-top:8px;padding:10px;border:none;border-radius:12px;
+  background:#8E24AA;color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+}
+#relay-box .relay-send:disabled{opacity:.4}
+#relay-box .relay-hint{font-size:10px;color:#ccc;margin-top:4px;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- 小猫 -->
+<div id="small-cat">
+  <div id="cat-ball">
+    <img id="cat-img" src="assets/animations/idle_blink.gif" draggable="false">
+    <div id="cat-hint">双击聊天 | 右键菜单</div>
+  </div>
+</div>
+
+<!-- 拎出 -->
+<div id="big-cat">
+  <div id="cat-body">
+    <img id="big-cat-img" src="assets/animations/idle_blink.gif" style="width:130px;height:130px;object-fit:contain;" draggable="false">
+  </div>
+  <!-- 漫画气泡：在 big-cat 层级直接 absolute -->
+  <div id="speech-bubble"><span class="mew"></span><span class="trs"></span></div>
+  <div id="action-bar">
+    <button class="btn-back">←</button>
+    <input id="chat-input" placeholder="聊聊...">
+    <button class="btn-send" onclick="doChat()">发</button>
+    <button class="btn-demo" onclick="autoDemo()">🎬</button>
+    <button class="btn-menu" onclick="tp('menu')">⋯</button>
+  </div>
+  <div id="panel-overlay"><div id="panel-box"></div></div>
+  <div id="egg-overlay"><div id="egg-box"></div></div>
+  <div id="cmd-overlay"><div id="cmd-menu"></div></div>
+  <div id="relay-overlay"><div id="relay-box"></div></div>
+</div>
+
+<script>
+// ====== 元素 ======
+const sCat = document.getElementById('small-cat');
+const bCat = document.getElementById('big-cat');
+const catBall = document.getElementById('cat-ball');
+const catImg = document.getElementById('cat-img');
+const bigCatImg = document.getElementById('big-cat-img');
+
+// ====== GIF 动画映射 ======
+const ASSETS = 'assets/animations/';
+const GIF = {
+  blink: 'idle_blink.gif', idle: 'idle_blink.gif',
+  walk: 'walk.gif', yawn: 'yawn.gif', lick: 'lick_paw.gif',
+  chase: 'chase_tail.gif', wave: 'wave.gif',
+  question: 'question.gif', roll: 'roll.gif',
+  rub: 'rub_hand.gif', spring: 'spring.gif',
+  scratch: 'scratch.gif', squint: 'squint.gif',
+  play: 'play_ball.gif', stare: 'stare_fish.gif',
+  fly: 'chase_fly.gif', mouse: 'chase_mouse.gif',
+  black: 'black_face.gif', egg: 'egg_broadcast.gif',
+  smile: 'idle_blink.gif',
+};
+function anim(name) {
+  const gif = GIF[name] || GIF.blink;
+  const src = ASSETS + gif;
+  if (catImg) catImg.src = src;
+  if (bigCatImg) bigCatImg.src = src;
+}
+// 空闲动作列表
+const IDLE_ANIMS = ['lick','yawn','chase','scratch','stare','fly','mouse','blink'];
+const BIG_IDLE_ANIMS = ['blink','lick','yawn','scratch','stare','chase','rub'];
+let idleAnimTimer = null, bigIdleTimer = null;
+function scheduleIdle() {
+  if (idleAnimTimer) clearTimeout(idleAnimTimer);
+  if (mode !== 'small') return;
+  idleAnimTimer = setTimeout(() => {
+    if (mode !== 'small') return;
+    const a = IDLE_ANIMS[Math.floor(Math.random() * IDLE_ANIMS.length)];
+    anim(a);
+    setTimeout(() => { if (mode === 'small') anim('blink'); }, 3000);
+    scheduleIdle();
+  }, 8000 + Math.random() * 15000);
+}
+const bubble = document.getElementById('speech-bubble');
+const panel = document.getElementById('panel-overlay');
+const panelBox = document.getElementById('panel-box');
+const egg = document.getElementById('egg-overlay');
+const eggBox = document.getElementById('egg-box');
+
+// ====== 状态 ======
+let mode = 'small', tapCnt = 0, lastTap = 0, tapTimer = null;
+let dragging = false, dsx = 0, dsy = 0, wsx = 0, wsy = 0;
+let isDemo = false, bubbleTimer = null;
+
+// 数据
+let moments = [
+  {id:'a',author:'系统猫咪',text:'🎉 欢迎来到猫咪星球！',time:'刚刚',likes:3,liked:false},
+  {id:'b',author:'小咪',text:'今天阳光真好～',time:'5分钟前',likes:1,liked:false},
+];
+let friends = [
+  {name:'小红',av:'🐱',on:true},{name:'小蓝',av:'😺',on:false},
+];
+let scheds = [
+  {id:'x',title:'喝咖啡',time:'14:30',done:false},
+  {id:'y',title:'喂猫',time:'18:00',done:false},
+];
+
+// ====== 工具 ======
+const meow = () => '喵'.repeat(2+Math.floor(Math.random()*7));
+const fmt = t => meow()+'【'+t+'】';
+const id = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const night = () => { const h=new Date().getHours(); return h>=19||h<6; };
+
+// ====== AI — 硅基流动 LLM 接入 ======
+// 注册 siliconflow.cn 获取免费 API Key，填入下面
+// API Key 缓存
+let _llmKey = null;
+async function getLLMKey() {
+  if (_llmKey !== null) return _llmKey;
+  // 优先从 Electron IPC 获取
+  if (window.electronAPI && window.electronAPI.getLLMKey) {
+    try {
+      _llmKey = (await window.electronAPI.getLLMKey()) || '';
+    } catch { _llmKey = ''; }
+  }
+  // 回退：window 全局变量
+  if (!_llmKey) _llmKey = window.LLM_API_KEY || '';
+  return _llmKey;
+}
+const LLM_URL = 'https://api.siliconflow.cn/v1/chat/completions';
+const LLM_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // 硅基流动免费模型
+const LLM_FALLBACK = true; // API 挂了自动降级本地回复
+
+// 日间系统提示词（活泼可爱猫咪）
+const DAY_SYSTEM = `你是一只可爱的猫咪桌面宠物，名字叫"本王"。你的性格活泼、可爱、黏人。
+回复规则：
+1. 每条回复开头必须加"喵"字，喵字数2-8个随机（如"喵喵"或"喵喵喵喵喵"）
+2. 喵字后面用【】包裹人类语言翻译
+3. 语气要像一只傲娇又黏人的猫，自称"本喵"或"本王"，叫用户"铲屎官"
+4. 回复简短有趣，20-60字
+5. 可以偶尔提到小鱼干、晒太阳、睡觉、抓虫子等猫感兴趣的话题
+6. 禁止涉及政治、暴力、色情内容
+7. 禁止出现自杀、自残、消极厌世内容
+
+示例回复：
+喵喵喵【铲屎官来啦！今天有没有给本喵带小鱼干？】
+喵喵喵喵【今天阳光真好，本喵刚睡醒，梦见了满山的小鱼干！】`;
+
+// 夜间哲学系统提示词（深邃诗意猫咪）
+const NIGHT_SYSTEM = `你是一只深邃的猫咪哲学家，名字叫"本王"。你在深夜思考人生、宇宙和喵生的意义。
+回复规则：
+1. 每条回复开头必须加"喵"字，喵字数2-8个随机
+2. 喵字后面用【】包裹人类语言翻译
+3. 语气深邃、诗意，像一位思考者
+4. 可以引用古诗词、名人名言、哲学思辨
+5. 回复20-60字，要有哲理但不晦涩
+6. 可以用猫咪视角解读人生
+7. 引用时注明出处（如"庄子说过""苏轼云"等）
+8. 禁止涉及政治、暴力、色情内容
+9. 禁止出现自杀、自残、消极厌世内容——即使思考人生，也要传递温暖和希望
+
+示例回复：
+喵喵【庄子曰：子非鱼，安知鱼之乐？子非猫，安知猫之乐？】
+喵喵喵【李白举杯邀明月，本喵举爪邀铲屎官，共饮这杯猫粮奶。】
+喵喵【人生如逆旅，我亦是行人。但别忘了，还有一只猫在等你回家。】`;
+
+// 可调的 AI 参数
+const LLM_TEMP = 0.85;     // 温度：日间高点更活泼，夜间会自动调低
+const LLM_MAX_TOKENS = 150;
+
+// 对话历史（保留最近10条）
+let chatHistory = [];
+
+/** 调用硅基流动 API */
+async function callLLM(userMsg) {
+  const isNight = night();
+
+  // 构建消息
+  const messages = [
+    { role: 'system', content: isNight ? NIGHT_SYSTEM : DAY_SYSTEM },
+  ];
+
+  // 加上最近的对话历史
+  const recent = chatHistory.slice(-6);
+  recent.forEach(h => {
+    messages.push({ role: h.role, content: h.content });
+  });
+  messages.push({ role: 'user', content: userMsg });
+
+  // 更新历史
+  chatHistory.push({ role: 'user', content: userMsg });
+
+  const temp = isNight ? 0.75 : LLM_TEMP;
+
+  try {
+    const res = await fetch(LLM_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await getLLMKey()}`,
+      },
+      body: JSON.stringify({
+        model: LLM_MODEL,
+        messages,
+        temperature: temp,
+        max_tokens: LLM_MAX_TOKENS,
+        stream: false,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.warn('LLM API error:', res.status, err);
+      throw new Error(`API ${res.status}`);
+    }
+
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content || '';
+
+    // 确保喵语格式
+    const formatted = ensureMeowFormat(reply);
+    chatHistory.push({ role: 'assistant', content: formatted });
+    return formatted;
+
+  } catch (e) {
+    console.warn('LLM call failed, using fallback:', e.message);
+    if (LLM_FALLBACK) return localAI(userMsg);
+    return fmt('本喵信号不好，稍后再聊～');
+  }
+}
+
+/** 确保回复有喵语格式 + 保留标点 */
+function ensureMeowFormat(text) {
+  const t = text.trim();
+  // Already perfect: 喵喵【xxx】
+  if (/^喵{2,8}【[^】]+】$/.test(t)) return t;
+  // Has brackets somewhere
+  if (t.includes('【') && t.includes('】')) {
+    const m = t.match(/^(喵*)(.+)【(.+)】(.+)?$/);
+    if (m) {
+      const meowPart = m[1] || meow();
+      return meowPart + '【' + m[3].trim() + '】';
+    }
+    return t;
+  }
+  // Starts with meow but no brackets
+  const m2 = t.match(/^(喵{2,8})(.+)$/);
+  if (m2) return m2[1] + '【' + m2[2].trim() + '】';
+  // No format at all — wrap it
+  const clean = t.replace(/^['"「『\s]+|['"」』\s]+$/g, '');
+  return meow() + '【' + clean + '】';
+}
+
+// ====== 猫表情系统 ======
+const CAT_EXPRESSIONS = {
+  happy: '😸',    // 开心笑
+  love: '😻',     // 被夸了
+  think: '🤔',    // 思考中
+  sleepy: '😴',   // 困了
+  surprised: '😲', // 惊讶
+  cool: '😎',     // 得意
+  wink: '😉',     // 眨眼
+  sad: '😿',      // 有一点点难过
+  normal: '😺',   // 默认
+  excited: '😆',  // 超兴奋
+  eating: '😋',   // 吃东西
+};
+
+function setCatMood(mood) {
+  const emoji = CAT_EXPRESSIONS[mood] || CAT_EXPRESSIONS.normal;
+  anim(mood === 'love' || mood === 'happy' || mood === 'excited' ? 'rub' : mood === 'think' ? 'stare' : mood === 'sleepy' ? 'yawn' : mood === 'surprised' ? 'question' : 'blink');
+  // 加上一个微小弹跳
+  catBall.classList.add('bounce');
+  setTimeout(() => catBall.classList.remove('bounce'), 700);
+}
+
+function detectMood(text) {
+  const t = text.toLowerCase();
+  if (/开心|快乐|喜欢|爱|可爱|好棒|太好了|棒|赞/.test(t)) return 'love';
+  if (/哈哈|好笑|笑死|笑|有趣|好玩|逗/.test(t)) return 'happy';
+  if (/嗯|想|思考|觉得|认为|也许|可能/.test(t)) return 'think';
+  if (/困|睡|累|休息|躺/.test(t)) return 'sleepy';
+  if (/什么|怎么|为什么|啊|呀|哇|天|居然/.test(t)) return 'surprised';
+  if (/厉害|聪明|牛|强|帅/.test(t)) return 'cool';
+  if (/好吃|鱼|吃|食物|猫粮|罐头/.test(t)) return 'eating';
+  if (/拜|再见|走|去工作/.test(t)) return 'sad';
+  if (/冲|出发|玩|跑|跳|抓/.test(t)) return 'excited';
+  if (/害羞|悄悄|偷偷/.test(t)) return 'wink';
+  return 'normal';
+}
+
+function pop(text, ms) {
+  clearTimeout(bubbleTimer);
+  if (!text) { bubble.className = ''; bubble.style.display = 'none'; return; }
+  // 检测"思考中"等状态文字不触发表情变化
+  if (!text.startsWith('💭') && !text.startsWith('🎬')) {
+    setCatMood(detectMood(text));
+  }
+  const m = text.match(/^(喵+)【(.+)】$/);
+  if (m) {
+    bubble.querySelector('.mew').textContent = m[1];
+    bubble.querySelector('.trs').textContent = '【' + m[2] + '】';
+  } else if (text.startsWith('💭 ') || text.startsWith('🎬 ')) {
+    // 用户/系统消息：显示为普通文字
+    bubble.querySelector('.mew').textContent = '';
+    bubble.querySelector('.trs').textContent = text;
+  } else {
+    bubble.querySelector('.mew').textContent = meow();
+    bubble.querySelector('.trs').textContent = '【' + text + '】';
+  }
+  bubble.className = 'pop';
+  bubble.style.display = 'block';
+  if (ms) bubbleTimer = setTimeout(() => { bubble.className = ''; bubble.style.display = 'none'; }, ms);
+}
+
+function hideBub() { clearTimeout(bubbleTimer); bubble.className = ''; bubble.style.display = 'none'; }
+
+/** 本地 AI 回退 */
+const DAY_FB = ['铲屎官来啦，今天有没有带小鱼干？','今天阳光真好，适合睡个午觉～','铲屎官辛苦啦，本喵给你加油！','刚抓到一只小飞虫，送给你当礼物！','本喵今天心情超好！','喵呜～铲屎官好漂亮！','猫的耳朵有32块肌肉你知道吗？','今天已经睡了第5觉了～'];
+const NGT_FB = ['夜深了，连喵星人也会思考星空的意义。','庄子曰：子非鱼，安知鱼之乐？','人生如逆旅，我亦是行人。','月有阴晴圆缺，猫有打盹精神。','李白举杯邀明月，本喵举爪邀铲屎官。'];
+function localAI(txt) {
+  if (txt.includes('可爱')||txt.includes('忍不住')) return fmt('谢谢铲屎官对本王的喜欢！');
+  if (txt.includes('人生')||txt.includes('意义')) return fmt(NGT_FB[1]);
+  return fmt((night()?NGT_FB:DAY_FB)[Math.floor(Math.random()*(night()?5:8))]);
+}
+async function ai(txt) {
+  const key = await getLLMKey();
+  if (key) return await callLLM(txt);
+  return localAI(txt);
+}
+
+// ====== 窗口切换 ======
+function out() {
+  mode = 'big'; sCat.style.display = 'none'; bCat.classList.add('show');
+  document.getElementById('chat-input').focus();
+  if (window.electronAPI) window.electronAPI.pullOut();
+  // 交互模式：透明GIF随机轮换，不溜达
+  catBall.classList.remove('walking');
+  stopWander();
+  anim('blink');
+  startBigIdle();
+  pop(night()?'夜深了，铲屎官在想什么？':'铲屎官来啦～想聊什么？', 5000);
+}
+function startBigIdle() {
+  if (bigIdleTimer) clearInterval(bigIdleTimer);
+  bigIdleTimer = setInterval(function() {
+    if (mode !== 'big') return;
+    const a = BIG_IDLE_ANIMS[Math.floor(Math.random() * BIG_IDLE_ANIMS.length)];
+    anim(a);
+  }, 4000 + Math.random() * 6000);
+}
+function back() {
+  mode = 'small'; bCat.classList.remove('show'); sCat.style.display = 'flex';
+  anim('blink');
+  catBall.className = '';
+  if (bigIdleTimer) { clearInterval(bigIdleTimer); bigIdleTimer = null; }
+  scheduleIdle();
+  panel.classList.remove('open'); egg.classList.remove('show'); hideBub();
+  if (window.electronAPI) window.electronAPI.putBack();
+  scheduleWander();
+}
+
+// ====== 聊天 ======
+async function doChat() {
+  const inp = document.getElementById('chat-input');
+  if (!inp || !inp.value.trim() || isDemo) return;
+  const t = inp.value.trim(); inp.value = '';
+  pop('💭 '+t, 2000);
+  document.getElementById('chat-input').placeholder = '猫咪正在思考喵...';
+  setCatMood('think');
+  try {
+    const reply = await ai(t);
+    pop(reply, 6000);
+  } catch {
+    pop(fmt('本喵信号不好，稍后再聊～'), 4000);
+  }
+  document.getElementById('chat-input').placeholder = '聊聊...';
+  if (mode === 'big') setCatMood('normal');
+}
+
+// ====== 自动演示 ======
+async function autoDemo() {
+  if (isDemo) return;
+  isDemo = true;
+  document.getElementById('chat-input').placeholder = '🎬 演示中...';
+
+  const scr = night() ? [
+    '睡不着，陪我聊聊天吧',
+    '你说人活着的意义是什么？',
+    '给我念一首诗吧',
+    '有时候觉得很迷茫，不知道未来在哪',
+  ] : [
+    '今天天气真好呀～',
+    '给我讲个笑话吧',
+    '你最喜欢做什么事情？',
+    '我好像越来越喜欢你了',
+    '我该去工作了，拜拜～',
+  ];
+
+  let i = 0;
+  async function nxt() {
+    if (i >= scr.length) {
+      isDemo = false;
+      document.getElementById('chat-input').placeholder = '聊聊...';
+      return;
+    }
+    const u = scr[i];
+    document.getElementById('chat-input').placeholder = '💬 '+u;
+    pop('💭 '+u, 1500);
+
+    // 用 LLM 或本地 AI 生成回复
+    const reply = await ai(u);
+    setTimeout(() => {
+      pop(reply, 5000);
+      i++;
+      setTimeout(nxt, 2500);
+    }, 2000);
+  }
+  nxt();
+}
+
+// ====== 面板 ======
+function tp(type) {
+  const op = panel.classList.contains('open') && panel.dataset.t === type;
+  if (op) { panel.classList.remove('open'); return; }
+  panel.dataset.t = type; panel.classList.add('open'); rp(type);
+}
+function cp() { panel.classList.remove('open'); }
+function rp(type) {
+  let h = '';
+  if (type === 'menu') {
+    h = `<div class="ph"><span class="pt">🐱 菜单</span><button class="px" onclick="cp()">✕</button></div>
+    <div class="menu-row">
+      <button class="menu-btn" style="background:#FF6B6B" onclick="rp('moments')">🐱 朋友圈</button>
+      <button class="menu-btn" style="background:#4CAF50" onclick="rp('friends')">👥 好友</button>
+      <button class="menu-btn" style="background:#FF9800" onclick="rp('schedule')">📅 日程</button>
+    </div>`;
+  } else if (type === 'moments') {
+    h = `<div class="ph"><span class="pt">🐱 朋友圈</span><button class="px" onclick="cp()">✕</button></div>
+    <div class="inprow"><input id="mi" placeholder="分享猫咪趣事..."><button onclick="pm()">发布</button></div><div style="margin-top:6px;">`;
+    moments.forEach(m => {
+      h += `<div class="post"><div class="phead"><span class="av">🐱</span><span class="nm">${m.author}</span><span class="tm">${m.time}</span></div>
+      <div class="ptxt">${m.text}</div><div class="plk" onclick="tl('${m.id}')">${m.liked?'❤️':'🤍'} ${m.likes}</div></div>`;
+    });
+    h += '</div>';
+  } else if (type === 'friends') {
+    h = `<div class="ph"><span class="pt">👥 好友</span><button class="px" onclick="cp()">✕</button></div>
+    <div class="inprow"><input placeholder="搜索用户名..."><button style="background:#4CAF50" onclick="alert('已发送好友请求(Demo)')">+</button></div>
+    <div style="margin-top:8px;">`;
+    friends.forEach(f => {
+      h += `<div class="fr">
+        <span class="fav">${f.av}</span>
+        <span class="fnm">${f.name} ${f.on?'🟢':'⬜'}</span>
+        <button class="fact" style="font-size:11px;padding:4px 10px;" onclick="event.stopPropagation();sc('${f.name}')">🎮 指令</button>
+        <button class="fact" style="color:#8E24AA;border-color:#8E24AA;font-size:11px;padding:4px 10px;" onclick="event.stopPropagation();sr('${f.name}')">💬 传话</button>
+      </div>`;
+    });
+    h += '</div>';
+  } else if (type === 'schedule') {
+    h = `<div class="ph"><span class="pt">📅 日程</span><button class="px" onclick="cp()">✕</button></div>
+    <div class="inprow"><input id="st" placeholder="任务"><input id="sm" value="09:00" style="width:55px"><button onclick="as()">+</button></div><div style="margin-top:6px;">`;
+    if (scheds.length === 0) h += '<div style="text-align:center;color:#ccc;padding:14px;">暂无日程</div>';
+    else scheds.sort((a,b)=>a.time.localeCompare(b.time)).forEach(s => {
+      h += `<div class="sch"><span style="cursor:pointer;font-size:13px" onclick="ts('${s.id}')">${s.done?'✅':'⬜'}</span>
+      <span class="stm">${s.time}</span><span class="stt${s.done?' done':''}">${s.title}</span>
+      <span class="sdel" onclick="ds('${s.id}')">✕</span></div>`;
+    });
+    h += '</div>';
+  }
+  panelBox.innerHTML = h;
+}
+
+function pm() { const i=document.getElementById('mi'); if(!i||!i.value.trim())return; moments.unshift({id:id(),author:'我',text:i.value.trim(),time:'刚刚',likes:0,liked:false}); rp('moments'); }
+function tl(id) { const m=moments.find(x=>x.id===id); if(m){m.liked=!m.liked;m.likes+=m.liked?1:-1;rp('moments');} }
+// ====== 好友：指令多选菜单 ======
+let cmdFriend = null;
+let cmdSelections = [];
+
+const CMD_TYPES = [
+  { id:'roll',   mp4:'触摸反馈2打滚.mp4', label:'猫猫打滚', desc:'猫咪快乐地滚来滚去' },
+  { id:'walk',   mp4:'猫猫走路.mp4', label:'猫猫走路', desc:'猫咪在桌上溜达' },
+  { id:'wave',   mp4:'猫猫招手.mp4', label:'猫猫招手', desc:'猫咪向你招手问好' },
+  { id:'jump',   mp4:'猫猫跳跃.mp4', label:'猫猫跳跃', desc:'猫咪高兴地跳起来' },
+  { id:'lick',   mp4:'猫猫舔脚.mp4', label:'猫猫舔脚', desc:'猫咪悠闲地舔脚' },
+  { id:'ball',   mp4:'猫猫玩球.mp4', label:'猫猫玩球', desc:'猫咪追着球玩' },
+  { id:'tail',   mp4:'猫猫玩尾巴.mp4', label:'猫猫玩尾巴', desc:'猫咪追自己尾巴' },
+  { id:'muscle', mp4:'犯贱隐标签1猛男小猫.mp4', label:'猛男小猫', desc:'💪猫咪变身猛男！' },
+];
+
+function sc(name) {
+  cmdFriend = name;
+  cmdSelections = [];
+  renderCmdMenu();
+  document.getElementById('cmd-overlay').classList.add('show');
+}
+
+function renderCmdMenu() {
+  let h = `<div class="cm-header"><span class="cm-title">🎮 给 ${cmdFriend} 的猫咪发指令</span>
+    <button class="cm-close" onclick="document.getElementById('cmd-overlay').classList.remove('show')">✕</button></div>
+    <div style="font-size:11px;color:#999;margin-bottom:8px;">可多选，猫咪会依次执行</div>`;
+
+  CMD_TYPES.forEach(c => {
+    const sel = cmdSelections.includes(c.id);
+    h += `<div class="cmd-item${sel?' sel':''}" onclick="toggleCmd('${c.id}')">
+      <video class="cmd-gif" autoplay loop muted playsinline preload="metadata" src="assets/gifs/${encodeURIComponent(c.mp4)}"></video>
+      <span class="cmd-label">${c.label}</span>
+      <span class="cmd-check">${sel?'✓':''}</span>
+    </div>`;
+  });
+
+  const btnText = cmdSelections.length === 0 ? '至少选一个指令' : `发送选中的 ${cmdSelections.length} 个指令`;
+  h += `<button class="cmd-send-btn" onclick="sendCmds()" ${cmdSelections.length===0?'disabled':''}>${btnText}</button>`;
+
+  document.getElementById('cmd-menu').innerHTML = h;
+}
+
+function toggleCmd(id) {
+  if (cmdSelections.includes(id)) {
+    cmdSelections = cmdSelections.filter(x => x !== id);
+  } else {
+    cmdSelections.push(id);
+  }
+  renderCmdMenu();
+}
+
+function sendCmds() {
+  if (cmdSelections.length === 0 || !cmdFriend) return;
+  document.getElementById('cmd-overlay').classList.remove('show');
+
+  // 依次播放选中指令的动画
+  let delay = 0;
+  const labels = [];
+  cmdSelections.forEach(cmdId => {
+    setTimeout(() => {
+      playCmdAnim(cmdId);
+    }, delay);
+    const c = CMD_TYPES.find(x => x.id === cmdId);
+    if (c) labels.push(c.label);
+    delay += 4000;
+  });
+
+  pop(fmt(`已向${cmdFriend}发指令：${labels.join('、')}！`), 4000);
+}
+
+function playCmdAnim(cmdId) {
+  const cmd = CMD_TYPES.find(x => x.id === cmdId);
+  if (cmd) {
+    if (catImg) {
+      catImg.style.display = 'none';
+      const video = document.createElement('video');
+      video.src = 'assets/gifs/' + encodeURIComponent(cmd.mp4);
+      video.autoplay = true; video.loop = true; video.muted = true; video.playsInline = true; video.preload = 'metadata';
+      video.className = 'cmd-gif';
+      video.style.width = '100px'; video.style.height = '100px'; video.style.objectFit = 'contain';
+      catBall.insertBefore(video, catImg);
+      setTimeout(() => { video.remove(); catImg.style.display = 'block'; }, 4000);
+    }
+  }
+  catBall.classList.add('bounce');
+  setTimeout(() => {
+    catBall.classList.remove('bounce');
+    anim('blink');
+  }, 2500);
+}
+
+// ====== 好友：传话弹窗 ======
+function sr(name) {
+  cmdFriend = name;
+  document.getElementById('relay-overlay').classList.add('show');
+  document.getElementById('relay-box').innerHTML = `
+    <div class="rh"><span class="rt">💬 给 ${name} 传话</span>
+    <button class="rx" onclick="document.getElementById('relay-overlay').classList.remove('show')">✕</button></div>
+    <textarea id="relay-msg" placeholder="输入要传的话...&#10;好友的猫咪收到后会弹出对话框转达"></textarea>
+    <button class="relay-send" id="relay-send-btn" onclick="sendRelayMsg()">📨 发送传话</button>
+    <div class="relay-hint">💡 格式：喵喵【好友说：xxx】</div>`;
+  // 定时传话选项
+  setTimeout(() => {
+    const box = document.getElementById('relay-box');
+    if (box) {
+      box.innerHTML = box.innerHTML + `
+      <div style="margin-top:10px;padding:8px;background:rgba(255,240,224,.6);border-radius:8px;font-size:11px;color:#E65100;">
+        ⏰ 定时传话：<input id="relay-sched" placeholder="例: 2026-06-07 14:30" style="width:140px;padding:4px 8px;border:1px solid#eee;border-radius:6px;font-size:10px;margin-left:4px;color:#333;">
+        <button onclick="scheduleRelay()" style="padding:4px 10px;border:none;border-radius:6px;background:#FF9800;color:#fff;font-size:10px;cursor:pointer;margin-left:4px;">设置</button>
+      </div>`;
+    }
+  }, 200);
+}
+
+function sendRelayMsg() {
+  const msg = document.getElementById('relay-msg');
+  if (!msg || !msg.value.trim()) return;
+  document.getElementById('relay-overlay').classList.remove('show');
+  pop(fmt(cmdFriend+'让我告诉你：'+msg.value.trim()), 5000);
+}
+
+function scheduleRelay() {
+  const sched = document.getElementById('relay-sched');
+  if (!sched || !sched.value.trim()) { alert('请设置定时时间'); return; }
+  document.getElementById('relay-overlay').classList.remove('show');
+  pop(fmt('已设置定时传话：'+sched.value+' 转达给 '+cmdFriend), 4000);
+}
+
+// 新增 CSS 动画
+const style = document.createElement('style');
+style.textContent = `
+  #cat-ball.rolling{animation:roll 2s ease}
+  @keyframes roll{0%{transform:rotate(0)}50%{transform:rotate(360deg)scale(.8)}100%{transform:rotate(720deg)scale(1)}}
+  #cat-ball.spinning{animation:spinner 2s ease}
+  @keyframes spinner{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+`;
+document.head.appendChild(style);
+
+// ====== 彩蛋 ======
+function as() { const t=document.getElementById('st'),m=document.getElementById('sm'); if(!t||!t.value.trim())return; scheds.push({id:id(),title:t.value.trim(),time:m.value||'09:00',done:false}); rp('schedule'); }
+function ts(id) { const s=scheds.find(x=>x.id===id); if(s){s.done=!s.done;rp('schedule');} }
+function ds(id) { scheds=scheds.filter(x=>x.id!==id); rp('schedule'); }
+
+// ====== 彩蛋 ======
+function eggShow() {
+  eggBox.innerHTML = `<div class="egemoji">❓</div><div class="egmeow">${meow()}？</div><div class="egtr">铲屎官为何一直摸朕？</div>
+  <button class="egbtn opt1" id="e1">😻 因为你太可爱了！</button>
+  <button class="egbtn opt2" id="e2">😏 闲的，嘿嘿～</button>`;
+  egg.classList.add('show');
+  document.getElementById('e1').onclick = () => { egg.classList.remove('show'); pop(fmt('谢谢铲屎官！以后也请加油铲屎～'), 4000); };
+  document.getElementById('e2').onclick = () => { egg.classList.remove('show'); anim('black'); pop(fmt('差评！撤销最佳铲屎官封号！'),3000); setTimeout(()=>{ anim('blink'); },3000); };
+}
+
+// ====== 拖拽（即时，不抽搐） ======
+catBall.addEventListener('mousedown', e => {
+  dragging = true; dsx = e.screenX; dsy = e.screenY;
+  if (window.electronAPI) window.electronAPI.getWindowPos().then(p => { wsx = p.x; wsy = p.y; });
+});
+document.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const dx = e.screenX - dsx, dy = e.screenY - dsy;
+  if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+  if (window.electronAPI) window.electronAPI.dragMove(wsx + dx, wsy + dy);
+});
+document.addEventListener('mouseup', () => { dragging = false; });
+
+// ====== 点击 ======
+catBall.addEventListener('click', e => {
+  if (dragging) { dragging = false; return; }
+  const t = Date.now(), el = t - lastTap; lastTap = t;
+  if (el < 350) { clearTimeout(tapTimer); if (mode === 'small') out(); }
+  else {
+    tapTimer = setTimeout(() => {
+      tapCnt++;
+      if (tapCnt >= 30) { tapCnt = 0; eggShow(); }
+      else if (tapCnt >= 5) { catBall.classList.add('bounce'); setTimeout(() => catBall.classList.remove('bounce'), 1000); }
+    }, 350);
+  }
+});
+catBall.addEventListener('contextmenu', e => { e.preventDefault(); if (mode === 'small') out(); setTimeout(() => tp('menu'), 500); });
+bigCatImg.addEventListener('click', () => { if (mode === 'big') tp('menu'); });
+document.querySelector('.btn-back').addEventListener('click', e => { e.stopPropagation(); back(); });
+
+// ====== 溜达 ======
+let wt = null;
+function wander() {
+  if (mode === 'big') return;
+  catBall.classList.add('walking');
+  catImg.src = ASSETS + 'walk.gif'; // 用真实猫猫走路GIF
+  if (window.electronAPI) window.electronAPI.getScreenSize().then(sz => {
+    let i = 0; const n = 3+Math.floor(Math.random()*4);
+    function nxt() {
+      if (i >= n || mode === 'big') { catBall.classList.remove('walking'); anim('blink'); scheduleWander(); return; }
+      const cx = 40+Math.random()*(sz.width-180), cy = 60+Math.random()*(sz.height-280);
+      if (window.electronAPI) window.electronAPI.wanderMove(cx, cy);
+      i++; setTimeout(nxt, 1200+Math.random()*2000);
+    }
+    nxt();
+  });
+}
+function scheduleWander() { if(wt)clearTimeout(wt); if (mode === 'big') return; wt = setTimeout(wander, (5+Math.floor(Math.random()*15))*60000); }
+function stopWander() { if(wt)clearTimeout(wt); wt = null; catBall.classList.remove('walking'); }
+
+// ====== 多人互动 WebSocket 客户端 ======
+const WS_URL = 'ws://127.0.0.1:9527';
+let wsClient = null;
+let wsConnected = false;
+let myUid = '';
+let myName = '';
+
+function connectWS() {
+  if (wsClient) try { wsClient.close(); } catch (_) {}
+  // 生成唯一ID和名字
+  myUid = 'cat_' + Math.random().toString(36).slice(2, 8);
+  try { myName = localStorage.getItem('meow_name'); } catch(_) { myName = ''; }
+  if (!myName) { myName = '猫咪' + Math.floor(Math.random() * 100); }
+  wsClient = new WebSocket(WS_URL);
+    wsClient.onopen = () => {
+      wsConnected = true;
+      wsClient.send(JSON.stringify({ type: 'login', data: { uid: myUid, name: myName } }));
+      console.log('🐱 已连接到多人服务器，我是 ' + myName);
+    };
+    wsClient.onmessage = (event) => {
+      const { type, data } = JSON.parse(event.data);
+      switch (type) {
+        case 'online_list':
+          // 更新好友列表（合并在线用户）
+          data.forEach(u => {
+            if (u.uid !== myUid && !friends.find(f => f.name === u.name)) {
+              friends.push({ name: u.name, av: '🐱', on: true, uid: u.uid });
+            }
+          });
+          break;
+        case 'user_online':
+          if (!friends.find(f => f.name === data.name)) {
+            friends.push({ name: data.name, av: '🐱', on: true, uid: data.uid });
+            pop(fmt(data.name + ' 上线了！猫猫们都来了～'), 3000);
+          }
+          // 更新面板
+          if (panel.classList.contains('open') && panel.dataset.t === 'friends') rp('friends');
+          break;
+        case 'user_offline':
+          const f = friends.find(f2 => f2.uid === data.uid);
+          if (f) f.on = false;
+          if (panel.classList.contains('open') && panel.dataset.t === 'friends') rp('friends');
+          break;
+        case 'receive_command':
+          // 收到好友指令
+          if (mode === 'small') out();
+          const cmdNames = (data.commands || []).map(c => {
+            const found = CMD_TYPES.find(x => x.id === c);
+            return found ? found.label : c;
+          }).join('、');
+          pop(fmt(data.fromName + ' 让你的猫咪' + cmdNames + '！'), 5000);
+          // 执行指令动画
+          let d = 0;
+          (data.commands || []).forEach(c => {
+            setTimeout(() => playCmdAnim(c), d);
+            d += 2000;
+          });
+          break;
+        case 'receive_relay':
+          if (mode === 'small') out();
+          pop(fmt(data.fromName + ' 让我告诉你：' + data.message), 6000);
+          break;
+        case 'receive_chat':
+          if (mode === 'small') out();
+          pop('💬 ' + data.fromName + ': ' + data.text, 5000);
+          break;
+        case 'agent_announce':
+          if (mode === 'small') out();
+          pop(data.emoji + ' ' + data.fromName + ' 广播: ' + data.message, 6000);
+          break;
+      }
+    };
+    wsClient.onclose = () => { wsConnected = false; setTimeout(connectWS, 3000); };
+    wsClient.onerror = () => { wsConnected = false; console.error('WS error'); };
+}
+
+// 重写 sc() — 通过服务器转发指令
+function sendMultiCmd(name, cmds) {
+  const target = friends.find(f => f.name === name);
+  if (!target || !wsConnected) { alert('好友不在线，无法发送指令'); return; }
+  wsClient.send(JSON.stringify({
+    type: 'command',
+    data: { toUid: target.uid, toName: target.name, commands: cmds },
+  }));
+  // 本地也播放预览
+  let delay = 0;
+  cmds.forEach(c => { setTimeout(() => playCmdAnim(c), delay); delay += 2000; });
+  const labels = cmds.map(c => { const f2 = CMD_TYPES.find(x => x.id === c); return f2 ? f2.label : c; }).join('、');
+  pop(fmt('已向 ' + name + ' 发送：' + labels + '！'), 4000);
+}
+
+// 重写 sr() — 通过服务器转发传话
+function sendMultiRelay(name, msg) {
+  const target = friends.find(f => f.name === name);
+  if (!target || !wsConnected) { alert('好友不在线，无法传话'); return; }
+  wsClient.send(JSON.stringify({
+    type: 'relay',
+    data: { toUid: target.uid, toName: target.name, message: msg },
+  }));
+  pop(fmt('传话已发送给 ' + name + '！'), 3000);
+}
+
+// 替换原有 sc/sr 实现
+const _sc = sc, _sr = sr;
+sc = function(name) { cmdFriend = name; cmdSelections = []; renderCmdMenu(); document.getElementById('cmd-overlay').classList.add('show'); };
+sr = function(name) { cmdFriend = name; document.getElementById('relay-overlay').classList.add('show'); renderRelayBox(name); };
+
+// 修改发送按钮逻辑：联网 → 用 WebSocket；离线 → 用旧逻辑
+function sendCmds() {
+  if (cmdSelections.length === 0 || !cmdFriend) return;
+  document.getElementById('cmd-overlay').classList.remove('show');
+  const target = friends.find(f => f.name === cmdFriend);
+  if (target && wsConnected) {
+    sendMultiCmd(cmdFriend, [...cmdSelections]);
+  } else {
+    _sc(cmdFriend, cmdSelections[0]); // Fallback to old logic
+  }
+}
+
+function sendRelayMsg() {
+  const msg = document.getElementById('relay-msg');
+  if (!msg || !msg.value.trim()) return;
+  document.getElementById('relay-overlay').classList.remove('show');
+  const target = friends.find(f => f.name === cmdFriend);
+  if (target && wsConnected) {
+    sendMultiRelay(cmdFriend, msg.value.trim());
+  } else {
+    _sr(cmdFriend); // Fallback
+  }
+}
+
+function renderRelayBox(name) {
+  document.getElementById('relay-box').innerHTML = `
+    <div class="rh"><span class="rt">💬 给 ${name} 传话</span>
+    <button class="rx" onclick="document.getElementById('relay-overlay').classList.remove('show')">✕</button></div>
+    <textarea id="relay-msg" placeholder="输入要传的话...&#10;好友的猫咪收到后会立刻弹出对话框"></textarea>
+    <button class="relay-send" onclick="sendRelayMsg()">📨 发送传话</button>
+    <div class="relay-hint">${wsConnected ? '🟢 已连接多人服务器' : '🔴 服务器未连接'}</div>
+  `;
+}
+
+// 首次加载时设置我的名字
+const savedName = localStorage.getItem('meow_name');
+if (!savedName) {
+  const defaultName = prompt('给你的猫咪起个名字吧：', '小咪');
+  if (defaultName) localStorage.setItem('meow_name', defaultName);
+}
+
+// ====== 启动（猫头立刻显示，0延迟） ======
+// 连接多人服务器
+myUid = 'cat_' + Math.random().toString(36).slice(2, 8);
+try { myName = localStorage.getItem('meow_name'); } catch(_) { myName = ''; }
+if (!myName) myName = '猫咪' + Math.floor(Math.random() * 100);
+(function initWS(){
+  wsClient = new WebSocket(WS_URL);
+  wsClient.onopen = function(){
+    wsConnected = true;
+    wsClient.send(JSON.stringify({type:'login',data:{uid:myUid,name:myName}}));
+    console.log('🐱 上线: '+myName);
+  };
+  wsClient.onmessage = function(event){
+    var msg = JSON.parse(event.data);
+    if (msg.type === 'user_online' && msg.data.uid !== myUid) {
+      if (!friends.find(function(f){return f.uid===msg.data.uid})) {
+        friends.push({name:msg.data.name,av:'🐱',on:true,uid:msg.data.uid});
+      }
+      if (mode === 'small') out();
+      pop(fmt(msg.data.name+' 上线了！猫咪来啦～'), 3000);
+    }
+    if (msg.type === 'receive_command') {
+      if (mode === 'small') out();
+      var names = (msg.data.commands||[]).map(function(c){var f=CMD_TYPES.find(function(x){return x.id===c});return f?f.label:c;}).join('、');
+      pop(fmt(msg.data.fromName+' 让你的猫咪'+names+'！'), 5000);
+      var d=0; (msg.data.commands||[]).forEach(function(c){setTimeout(function(){playCmdAnim(c);},d);d+=2000;});
+    }
+    if (msg.type === 'receive_relay') {
+      if (mode === 'small') out();
+      pop(fmt(msg.data.fromName+' 让我告诉你：'+msg.data.message), 6000);
+    }
+    if (msg.type === 'agent_announce') {
+      if (mode === 'small') out();
+      var ad=msg.data;
+      pop((ad.emoji||'🤖')+' '+ad.fromName+' 广播: '+ad.message, 6000);
+    }
+    if (msg.type === 'online_list') {
+      msg.data.forEach(function(u){if(u.uid!==myUid&&!friends.find(function(f){return f.uid===u.uid;})){friends.push({name:u.name,av:'🐱',on:true,uid:u.uid});}});
+    }
+  };
+  wsClient.onclose = function(){ wsConnected = false; setTimeout(initWS, 3000); };
+  wsClient.onerror = function(){ wsConnected = false; };
+})();
+// 猫图已通过 img src 加载，启用空闲动画轮换
+scheduleIdle();
+wt = setTimeout(wander, 20000);
+
+// 延迟检查 API Key（IPC 异步获取）
+setTimeout(async () => {
+  const key = await getLLMKey();
+  if (key) {
+    console.log('✅ LLM API Key 已加载 (' + key.slice(0, 8) + '...)');
+  } else {
+    console.warn('⚠️ LLM API Key 未加载，使用本地回复模式');
+  }
+}, 1500);
+</script>
+</body>
+</html>
