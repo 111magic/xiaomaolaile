@@ -1,35 +1,4 @@
 {
   "name": "cat-pet-desktop",
-  "version": "1.0.0",
-  "description": "猫咪桌面宠物 - PC桌面版",
-  "main": "main.js",
-  "scripts": {
-    "start": "node agent-server.js",
-    "dev": "node agent-server.js",
-    "app": "electron .",
-    "relay": "node relay-server.js",
-    "demo": "node agent-server.js & sleep 1 && bash open-dual-agents.sh",
-    "open-agents": "bash open-dual-agents.sh",
-    "build": "electron-builder --mac --x64",
-    "build:win": "electron-builder --win --x64"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "electron": "^28.3.3",
-    "electron-builder": "^24.0.0"
-  },
-  "build": {
-    "appId": "com.catpet.desktop",
-    "productName": "猫咪桌面宠物",
-    "mac": {
-      "category": "public.app-category.entertainment",
-      "target": "dmg"
-    },
-    "win": {
-      "target": "nsis"
-    }
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "version": "1.0.0"
 }
