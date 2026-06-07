@@ -1,0 +1,17 @@
+{
+  "builds": [
+    {
+      "src": "share.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/share.html"
+    },
+    {
+      "handle": "filesystem"
+    }
+  ]
+}
