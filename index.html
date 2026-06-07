@@ -1,11 +1,1239 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=share.html">
-  <script>location.href = 'share.html'</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🐱 喵了个咪 — 多人派对</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#fff5eb 0%,#ffe8d6 50%,#fff0e0 100%);color:#333;overflow-x:hidden}
+
+/* ====== 顶部 ====== */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,179,102,.3);
+  padding:10px 16px;display:flex;align-items:center;gap:10px;
+}
+.topbar .logo{font-size:32px;cursor:pointer;transition:transform .15s}
+.topbar .logo:active{transform:scale(1.2)}
+.topbar .title{flex:1}
+.topbar .title h1{font-size:16px;font-weight:700;color:#E65100}
+.topbar .title .sub{font-size:11px;color:#999}
+.online-badge{
+  background:#e8f5e9;color:#2e7d32;font-size:11px;font-weight:600;
+  padding:5px 12px;border-radius:14px;display:flex;align-items:center;gap:5px;
+}
+.online-dot{width:7px;height:7px;border-radius:50%;background:#4CAF50;display:inline-block;animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.5}}
+
+.container{max-width:560px;margin:0 auto;padding:14px}
+
+/* ====== 猫咪舞台（我的猫） ====== */
+.cat-stage{
+  background:rgba(255,255,255,.75);border-radius:24px;padding:20px;
+  text-align:center;margin-bottom:14px;
+  box-shadow:0 6px 24px rgba(0,0,0,.06);
+  position:relative;overflow:hidden;
+}
+.cat-stage::before{
+  content:'';position:absolute;top:-20px;right:-20px;
+  width:80px;height:80px;border-radius:50%;background:rgba(255,179,102,.08);
+}
+.cat-stage::after{
+  content:'';position:absolute;bottom:-30px;left:-30px;
+  width:100px;height:100px;border-radius:50%;background:rgba(255,107,107,.06);
+}
+.cat-stage-label{
+  font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;
+  position:relative;z-index:1;
+}
+
+/* 猫球 */
+.cat-circle{
+  width:100px;height:100px;border-radius:50%;
+  background:linear-gradient(135deg,#FFE0C0 0%,#FFD4A0 100%);
+  border:3px solid #FFB366;
+  display:inline-flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 24px rgba(255,179,102,.3);
+  position:relative;z-index:1;cursor:pointer;
+  transition:transform .2s;
+}
+.cat-circle:hover{transform:scale(1.1)}
+.cat-circle:active{transform:scale(.9)}
+.cat-circle img,#cat-face-img{width:80px;height:80px;object-fit:contain;display:block}
+.cat-circle.bounce{animation:bounce .6s cubic-bezier(.68,-.55,.265,1.55)}
+.cat-circle.rolling{animation:roll 2s ease}
+.cat-circle.spinning{animation:spinner 1.5s ease}
+.cat-circle.walking{animation:walkWobble .4s ease-in-out infinite}
+@keyframes bounce{0%{transform:scale(1)}30%{transform:scale(1.2)}50%{transform:scale(.85)}100%{transform:scale(1)}}
+@keyframes roll{0%{transform:rotate(0)}50%{transform:rotate(360deg)scale(.8)}100%{transform:rotate(720deg)scale(1)}}
+@keyframes spinner{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+@keyframes walkWobble{0%,100%{transform:translateY(-3px)}50%{transform:translateY(3px)}}
+
+.cat-name-tag{
+  display:inline-block;margin-top:10px;background:#FF6B6B;color:#fff;
+  padding:4px 14px;border-radius:12px;font-size:12px;font-weight:600;
+  position:relative;z-index:1;
+}
+.cat-hint{
+  font-size:10px;color:#ccc;margin-top:4px;
+  position:relative;z-index:1;
+}
+
+/* ====== 漫画气泡 ====== */
+.speech-bubble{
+  position:relative;z-index:2;
+  background:rgba(255,255,255,.95);border-radius:18px;
+  padding:12px 16px;margin:12px auto 0;max-width:320px;
+  border:2px solid rgba(255,179,102,.5);
+  text-align:left;min-height:30px;
+  box-shadow:0 4px 16px rgba(0,0,0,.08);
+  display:none;
+}
+.speech-bubble::after{
+  content:'';position:absolute;top:-8px;left:50%;transform:translateX(-50%)rotate(45deg);
+  width:14px;height:14px;
+  background:rgba(255,255,255,.95);
+  border-left:2px solid rgba(255,179,102,.5);
+  border-top:2px solid rgba(255,179,102,.5);
+  border-radius:3px 0 0 0;
+}
+.speech-bubble.show{display:block;animation:bubblePop .35s cubic-bezier(.175,.885,.32,1.275)}
+.speech-bubble .mew{color:#FF6B6B;font-weight:700;font-style:italic;font-size:14px;display:block;margin-bottom:2px}
+.speech-bubble .trs{color:#333;font-size:13px;line-height:1.5}
+@keyframes bubblePop{0%{opacity:0;transform:translateY(8px)scale(.85)}100%{opacity:1;transform:translateY(0)scale(1)}}
+
+/* ====== 其他猫咪列表 ====== */
+.others-section{margin-bottom:14px}
+.section-title{
+  font-size:12px;font-weight:700;color:#999;text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px;
+}
+.others-row{display:flex;flex-wrap:wrap;gap:10px}
+.other-cat{
+  background:rgba(255,255,255,.8);border-radius:18px;padding:12px 16px;
+  display:flex;align-items:center;gap:12px;cursor:pointer;
+  border:2px solid transparent;transition:all .2s;
+  box-shadow:0 3px 12px rgba(0,0,0,.04);
+  min-width:140px;
+}
+.other-cat:hover{border-color:rgba(255,107,107,.4);background:#fff;transform:translateY(-2px)}
+.other-cat.selected{border-color:#FF6B6B;background:rgba(255,107,107,.06)}
+.other-cat .oc-avatar{
+  width:48px;height:48px;border-radius:50%;
+  background:linear-gradient(135deg,#FFE0C0,#FFD4A0);
+  border:2px solid #FFB366;
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;flex-shrink:0;
+  overflow:hidden;
+}
+.other-cat .oc-avatar img{width:38px;height:38px;object-fit:contain}
+.other-cat .oc-info .oc-name{font-size:13px;font-weight:600}
+.other-cat .oc-info .oc-status{font-size:10px;color:#4CAF50}
+.other-cat .oc-actions{display:flex;gap:4px;margin-top:4px}
+.other-cat .oc-btn{
+  padding:3px 8px;border:1px solid #eee;border-radius:10px;
+  font-size:10px;cursor:pointer;background:#fff;color:#666;
+  transition:all .15s;
+}
+.other-cat .oc-btn:hover{background:#FF6B6B;color:#fff;border-color:#FF6B6B}
+.other-cat .oc-btn.relay-btn:hover{background:#8E24AA;border-color:#8E24AA}
+
+/* ====== 动作快捷按钮 ====== */
+.quick-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.quick-btn{
+  padding:7px 12px;border:1.5px solid rgba(255,107,107,.25);border-radius:16px;
+  background:#fff;font-size:11px;cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;gap:4px;
+}
+.quick-btn:hover{background:rgba(255,107,107,.08);border-color:#FF6B6B}
+.quick-btn:active{transform:scale(.95)}
+.quick-btn.sent{background:rgba(255,107,107,.12);border-color:#FF6B6B;animation:qpulse .3s}
+@keyframes qpulse{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+
+/* ====== 底部菜单栏 ====== */
+.menu-bar{
+  display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;
+}
+.menu-btn{
+  padding:10px 16px;border:none;border-radius:16px;font-size:12px;font-weight:600;
+  cursor:pointer;color:#fff;transition:opacity .15s;
+}
+.menu-btn:hover{opacity:.85}
+.menu-btn:active{transform:scale(.96)}
+.menu-btn.moments{background:#FF6B6B}
+.menu-btn.friends{background:#4CAF50}
+.menu-btn.schedule{background:#FF9800}
+.menu-btn.demo{background:#9C27B0}
+.menu-btn.menu{background:#607D8B}
+
+/* ====== 聊天 ====== */
+.chat-section{
+  background:rgba(255,255,255,.75);border-radius:20px;
+  padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.06);
+}
+.chat-msgs{
+  max-height:200px;overflow-y:auto;margin-bottom:12px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.chat-msg{
+  max-width:80%;padding:8px 12px;border-radius:14px;font-size:12px;line-height:1.4;
+}
+.chat-msg.mine{align-self:flex-end;background:#FF6B6B;color:#fff;border-bottom-right-radius:4px}
+.chat-msg.other{align-self:flex-start;background:#fff;border:1px solid #eee;border-bottom-left-radius:4px}
+.chat-msg.system{align-self:center;background:rgba(255,152,0,.1);color:#E65100;font-size:11px;max-width:90%;text-align:center}
+.chat-msg .cma{font-size:10px;opacity:.7;margin-bottom:2px}
+
+.chat-input-row{display:flex;gap:8px}
+.chat-input-row input{
+  flex:1;padding:10px 14px;border:1.5px solid #eee;border-radius:20px;
+  font-size:13px;outline:none;background:rgba(255,255,255,.8);
+  transition:border-color .2s;
+}
+.chat-input-row input:focus{border-color:#FF6B6B}
+.chat-input-row button{
+  padding:10px 18px;border:none;border-radius:20px;
+  font-size:12px;font-weight:700;cursor:pointer;color:#fff;
+}
+.btn-send{background:#FF6B6B}
+.btn-send:active{transform:scale(.95)}
+.btn-relay-main{background:#8E24AA;display:none}
+.btn-relay-main:active{transform:scale(.95)}
+
+/* ====== 弹窗通用 ====== */
+.modal-overlay{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.15);align-items:center;justify-content:center;
+}
+.modal-overlay.open{display:flex}
+.modal-box{
+  background:#fff;border-radius:22px;padding:20px;
+  width:92%;max-width:380px;max-height:82vh;overflow-y:auto;
+  box-shadow:0 14px 40px rgba(0,0,0,.15);
+}
+.modal-box .mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.modal-box .mh .mt{font-size:15px;font-weight:700}
+.modal-box .mh .mx{
+  width:28px;height:28px;border-radius:50%;background:#f0f0f0;
+  border:none;font-size:14px;cursor:pointer;color:#999;
+}
+.modal-box .mh .mx:hover{background:#e0e0e0}
+
+/* ====== 指令多选 ====== */
+.cmd-option{
+  display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;
+  cursor:pointer;transition:all .15s;margin-bottom:3px;
+  border:1.5px solid transparent;
+}
+.cmd-option:hover{background:rgba(255,107,107,.05)}
+.cmd-option.selected{background:rgba(255,107,107,.1);border-color:rgba(255,107,107,.3)}
+.cmd-option .co-gif{width:38px;height:38px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,.5)}
+.cmd-option .co-emoji{font-size:24px;width:32px;text-align:center}
+.cmd-option .co-info{flex:1}
+.cmd-option .co-info .co-label{font-size:13px;font-weight:600}
+.cmd-option .co-info .co-desc{font-size:10px;color:#aaa}
+.cmd-option .co-check{font-size:18px;color:#FF6B6B;display:none}
+.cmd-option.selected .co-check{display:block}
+.modal-send-btn{
+  width:100%;margin-top:12px;padding:12px;border:none;border-radius:14px;
+  background:#FF6B6B;color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+}
+.modal-send-btn:disabled{opacity:.35;cursor:default}
+
+/* ====== 传话 ====== */
+.relay-textarea{
+  width:100%;height:80px;padding:12px;border:1.5px solid #eee;border-radius:14px;
+  font-size:13px;outline:none;resize:none;font-family:inherit;
+  margin:6px 0;transition:border-color .2s;
+}
+.relay-textarea:focus{border-color:#8E24AA}
+.relay-hint{font-size:10px;color:#bbb;text-align:center;margin-top:6px}
+.sched-row{display:flex;gap:6px;align-items:center;margin-top:8px}
+.sched-row input{
+  flex:1;padding:6px 10px;border:1px solid #eee;border-radius:8px;
+  font-size:11px;outline:none;color:#333;
+}
+.sched-row button{
+  padding:6px 12px;border:none;border-radius:8px;
+  background:#FF9800;color:#fff;font-size:11px;cursor:pointer;white-space:nowrap;
+}
+
+/* ====== 朋友圈 ====== */
+.post{
+  background:rgba(255,255,255,.8);border-radius:14px;padding:10px 12px;margin-bottom:8px;
+  border:1px solid #f0f0f0;
+}
+.post .phd{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.post .phd .pav{font-size:22px}
+.post .phd .pnm{font-size:12px;font-weight:600;color:#333}
+.post .phd .ptm{font-size:10px;color:#ccc;margin-left:auto}
+.post .ptxt{font-size:12px;color:#333;line-height:1.5;margin-bottom:4px}
+.post .plk{font-size:10px;color:#999;cursor:pointer;border-top:1px solid #f5f5f5;padding-top:4px}
+
+/* ====== 好友 ====== */
+.fr-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5}
+.fr-item .frav{font-size:24px}
+.fr-item .frnm{flex:1;font-size:12px;font-weight:500;color:#333}
+.fr-item .fract{
+  font-size:10px;font-weight:600;cursor:pointer;
+  padding:3px 8px;border-radius:8px;white-space:nowrap;
+}
+.fr-item .fract.cmd-btn{border:1px solid #FF6B6B;color:#FF6B6B;background:#fff}
+.fr-item .fract.relay-btn{border:1px solid #8E24AA;color:#8E24AA;background:#fff;margin-left:3px}
+
+/* ====== 日程 ====== */
+.sch-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5}
+.sch-item .schk{font-size:14px;cursor:pointer}
+.sch-item .sctm{
+  background:#FFF0E0;border-radius:6px;padding:2px 7px;
+  font-size:11px;color:#FF9800;font-weight:600;min-width:44px;text-align:center;
+}
+.sch-item .sctt{flex:1;font-size:12px;color:#333}
+.sch-item .sctt.done{text-decoration:line-through;color:#ccc}
+.sch-item .scdel{color:#ccc;cursor:pointer;font-size:15px}
+.inprow{display:flex;gap:5px;margin-top:8px}
+.inprow input{flex:1;padding:7px 10px;border:1px solid #eee;border-radius:10px;font-size:11px;outline:none}
+.inprow button{padding:7px 12px;border:none;border-radius:10px;color:#fff;font-size:11px;font-weight:600;cursor:pointer}
+
+/* ====== Toast ====== */
+.toast{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%);
+  background:#333;color:#fff;padding:10px 20px;border-radius:22px;
+  font-size:12px;z-index:500;opacity:0;transition:opacity .3s;
+  pointer-events:none;
+}
+.toast.show{opacity:1}
+
+/* ====== 彩蛋 ====== */
+.egg-btns{position:fixed;bottom:16px;right:16px;z-index:100;display:flex;flex-direction:column;gap:8px}
+.egg-btn{
+  width:38px;height:38px;border-radius:50%;border:none;color:#fff;
+  font-size:17px;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.15);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .15s;
+}
+.egg-btn:active{transform:scale(.9)}
+.egg-btn.egg{background:rgba(255,107,107,.9)}
+.egg-btn.name{background:rgba(255,152,0,.9)}
+.egg-btn.copy{background:rgba(76,175,80,.9)}
+
+/* ====== 响应式 ====== */
+@media(max-width:420px){
+  .container{padding:8px}
+  .cat-stage{padding:14px}
+  .cat-circle{width:80px;height:80px}
+  .cat-circle img{width:64px;height:64px}
+  .other-cat{min-width:120px;padding:10px}
+  .other-cat .oc-avatar{width:40px;height:40px;font-size:22px}
+  .other-cat .oc-avatar img{width:30px;height:30px}
+  .quick-btn{font-size:10px;padding:5px 8px}
+  .menu-btn{font-size:11px;padding:8px 12px}
+}
+</style>
 </head>
 <body>
-  <p>正在跳转到猫咪游戏...</p>
+
+<!-- 顶部 -->
+<div class="topbar">
+  <span class="logo" onclick="quickTap()">🐱</span>
+  <div class="title">
+    <h1>喵了个咪 · 多人派对</h1>
+    <div class="sub" id="server-status">🔗 连接中...</div>
+  </div>
+  <div class="online-badge">
+    <span class="online-dot"></span>
+    <span id="online-count">0</span> 人在线
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 我的猫咪舞台 -->
+  <div class="cat-stage">
+    <div class="cat-stage-label">🐱 我的猫咪</div>
+    <div class="cat-circle" id="cat-ball">
+      <img id="cat-face-img" src="assets/animations/idle_blink.gif" alt="猫咪" draggable="false">
+    </div>
+    <div class="cat-name-tag" id="cat-name-tag">🐱 我的小猫</div>
+    <div class="cat-hint">💡 点猫头有惊喜 | 双击变大</div>
+    <div class="speech-bubble" id="bubble">
+      <span class="mew"></span>
+      <span class="trs"></span>
+    </div>
+  </div>
+
+  <!-- 在线其他猫咪 -->
+  <div class="others-section">
+    <div class="section-title">👥 在线猫咪（点击选择，发送指令）</div>
+    <div class="others-row" id="others-row">
+      <div style="color:#ccc;font-size:12px;padding:8px;">🐱 等待好友上线...分享链接邀请朋友吧！</div>
+    </div>
+  </div>
+
+  <!-- 快捷动作 -->
+  <div class="section-title">🎮 快捷动作（选中好友后点击）</div>
+  <div class="quick-actions" id="quick-actions"></div>
+
+  <!-- 功能菜单栏 -->
+  <div class="menu-bar">
+    <button class="menu-btn moments" onclick="openPanel('moments')">🐱 朋友圈</button>
+    <button class="menu-btn friends" onclick="openPanel('friends')">👥 好友列表</button>
+    <button class="menu-btn schedule" onclick="openPanel('schedule')">📅 日程</button>
+    <button class="menu-btn demo" onclick="autoDemo()">🎬 自动演示</button>
+    <button class="menu-btn menu" onclick="openPanel('menu')">⋯ 更多</button>
+  </div>
+
+  <!-- 聊天区 -->
+  <div class="chat-section">
+    <div class="section-title">💬 猫咪聊天室</div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="chat-msg system">🎉 欢迎来到猫咪派对！先点上方「在线猫咪」选一个好友，然后发指令或传话吧～</div>
+    </div>
+    <div class="chat-input-row">
+      <input id="chat-input" placeholder="输入消息广播给所有人..." maxlength="300">
+      <button class="btn-send" id="btn-send">发送</button>
+      <button class="btn-relay-main" id="btn-relay-main">💬 传话</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- 弹窗 -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- 右下角按钮 -->
+<div class="egg-btns">
+  <button class="egg-btn egg" id="egg-btn" title="彩蛋">🎁</button>
+  <button class="egg-btn name" id="name-btn" title="改名字">✏️</button>
+  <button class="egg-btn copy" id="copy-btn" title="复制链接">🔗</button>
+</div>
+
+<script>
+// ============================================================
+// 喵了个咪 — 多人派对（完整版）
+// 保留原始 cat-window.html 全部功能 + 多人实时互动
+// ============================================================
+
+// ====== 常量 ======
+const WS_URL = (location.protocol==='https:'?'wss:':'ws:')+'//'+location.host;
+const API_BASE = location.origin;
+const ASSETS = 'assets/animations/';
+
+// ====== GIF 动画映射 ======
+const GIF = {
+  blink:'idle_blink.gif', idle:'idle_blink.gif',
+  walk:'walk.gif', yawn:'yawn.gif', lick:'lick_paw.gif',
+  chase:'chase_tail.gif', wave:'wave.gif',
+  question:'question.gif', roll:'roll.gif',
+  rub:'rub_hand.gif', spring:'spring.gif',
+  scratch:'scratch.gif', squint:'squint.gif',
+  play:'play_ball.gif', stare:'stare_fish.gif',
+  fly:'chase_fly.gif', mouse:'chase_mouse.gif',
+  black:'black_face.gif', egg:'egg_broadcast.gif',
+  smile:'idle_blink.gif',
+};
+
+// 空闲动作列表
+const IDLE_ANIMS = ['lick','yawn','chase','scratch','stare','fly','mouse','blink'];
+
+// 指令
+const CMD_TYPES = [
+  { id:'roll',   emoji:'🔄', label:'猫猫打滚', desc:'猫咪快乐地滚来滚去',  mp4:'触摸反馈2打滚.mp4' },
+  { id:'walk',   emoji:'🚶', label:'猫猫走路', desc:'猫咪在桌上溜达',      mp4:'猫猫走路.mp4' },
+  { id:'wave',   emoji:'👋', label:'猫猫招手', desc:'猫咪向你招手问好',    mp4:'猫猫招手.mp4' },
+  { id:'jump',   emoji:'🦘', label:'猫猫跳跃', desc:'猫咪高兴地跳起来',    mp4:'猫猫跳跃.mp4' },
+  { id:'lick',   emoji:'👅', label:'猫猫舔脚', desc:'猫咪悠闲地舔脚',      mp4:'猫猫舔脚.mp4' },
+  { id:'ball',   emoji:'⚽', label:'猫猫玩球', desc:'猫咪追着球玩',        mp4:'猫猫玩球.mp4' },
+  { id:'tail',   emoji:'🌀', label:'猫猫玩尾巴', desc:'猫咪追自己尾巴',    mp4:'猫猫玩尾巴.mp4' },
+  { id:'muscle', emoji:'💪', label:'猛男小猫', desc:'💪猫咪变身猛男！',    mp4:'犯贱隐标签1猛男小猫.mp4' },
+];
+
+// 自动演示脚本
+const DEMO_SCRIPT = [
+  '你好呀，我是新来的猫咪～',
+  '今天天气真好，适合晒太阳',
+  '你在做什么呢？一起来玩吧',
+  '我们来互相发指令玩玩！',
+  '拜拜啦，下次再一起玩～',
+];
+
+// ====== 状态 ======
+let myUid = '', myName = '', ws = null;
+let onlineUsers = [];    // [{uid, name}]
+let selectedFriend = null; // {uid, name}
+let cmdSelections = [];
+let isDemo = false;
+let tapCount = 0, lastTapTime = 0;
+let idleTimer = null;
+
+// 数据
+let moments = [
+  {id:'a',author:'系统猫咪',text:'🎉 欢迎来到猫咪星球！',time:'刚刚',likes:3,liked:false},
+  {id:'b',author:'小咪',text:'今天阳光真好～最适合在窗台晒太阳了☀️',time:'5分钟前',likes:1,liked:false},
+];
+let friendsList = [
+  {name:'小红',av:'🐱',on:true},{name:'小蓝',av:'😺',on:false},
+];
+let scheds = [
+  {id:'x',title:'喝咖啡☕️',time:'14:30',done:false},
+  {id:'y',title:'喂猫🐟',time:'18:00',done:false},
+];
+
+// ====== 工具函数 ======
+const $ = (id) => document.getElementById(id);
+const meow = () => '喵'.repeat(2 + Math.floor(Math.random() * 5));
+const fmtMeow = (t) => meow() + '【' + t + '】';
+const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const isNight = () => { const h = new Date().getHours(); return h >= 19 || h < 6; };
+
+// ====== DOM 引用 ======
+const catBallRef = $('cat-ball');
+const catFaceRef = $('cat-face-img');
+const bubbleRef = $('bubble');
+const modal = $('modal');
+const modalBox = $('modal-box');
+
+// ====== Toast ======
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ====== 动画 ======
+function anim(name) {
+  const gif = GIF[name] || GIF.blink;
+  catFaceRef.src = ASSETS + gif;
+}
+
+// 空闲动画轮换
+function scheduleIdle() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    const a = IDLE_ANIMS[Math.floor(Math.random() * IDLE_ANIMS.length)];
+    anim(a);
+    setTimeout(() => anim('blink'), 3000);
+    scheduleIdle();
+  }, 8000 + Math.random() * 15000);
+}
+
+// 气泡
+let bubbleTimer = null;
+function showBubble(mewText, trsText, ms) {
+  clearTimeout(bubbleTimer);
+  bubbleRef.querySelector('.mew').textContent = mewText || '';
+  bubbleRef.querySelector('.trs').textContent = trsText || '';
+  bubbleRef.classList.add('show');
+  if (ms) bubbleTimer = setTimeout(() => bubbleRef.classList.remove('show'), ms);
+}
+function hideBubble() {
+  clearTimeout(bubbleTimer);
+  bubbleRef.classList.remove('show');
+}
+
+// 猫情绪
+const CAT_MOODS = {
+  happy:'😸', love:'😻', think:'🤔', sleepy:'😴',
+  surprised:'😲', cool:'😎', wink:'😉', sad:'😿',
+  normal:'😺', excited:'😆', eating:'😋',
+};
+function setCatMood(mood) {
+  const animMap = {love:'rub',happy:'rub',excited:'rub',think:'stare',sleepy:'yawn',surprised:'question'};
+  const a = animMap[mood] || 'blink';
+  anim(a);
+  catBallRef.classList.add('bounce');
+  setTimeout(() => catBallRef.classList.remove('bounce'), 700);
+}
+function detectMood(text) {
+  const t = text;
+  if (/开心|快乐|喜欢|爱|可爱|好棒|太好了|棒|赞/.test(t)) return 'love';
+  if (/哈哈|好笑|笑死|笑|有趣|好玩|逗/.test(t)) return 'happy';
+  if (/嗯|想|思考|觉得|认为|也许|可能/.test(t)) return 'think';
+  if (/困|睡|累|休息|躺/.test(t)) return 'sleepy';
+  if (/什么|怎么|为什么|啊|呀|哇|天|居然/.test(t)) return 'surprised';
+  if (/厉害|聪明|牛|强|帅/.test(t)) return 'cool';
+  if (/好吃|鱼|吃|食物|猫粮|罐头/.test(t)) return 'eating';
+  if (/拜|再见|走|去工作/.test(t)) return 'sad';
+  if (/冲|出发|玩|跑|跳|抓/.test(t)) return 'excited';
+  if (/害羞|悄悄|偷偷/.test(t)) return 'wink';
+  return 'normal';
+}
+
+// 播放指令动画 — 用 mp4 视频替换猫图，播完恢复
+let cmdVideoTimer = null;
+
+function playCmdAnim(cmdId) {
+  const cmd = CMD_TYPES.find(c => c.id === cmdId);
+  const mp4 = cmd ? cmd.mp4 : '猫猫招手.mp4';
+  const label = cmd ? cmd.label : cmdId;
+  const videoSrc = 'assets/gifs/' + encodeURIComponent(mp4);
+  const DURATION = 4000;
+
+  // 先清除之前的视频和定时器
+  clearTimeout(cmdVideoTimer);
+  const oldVideo = catBallRef.querySelector('video');
+  if (oldVideo) oldVideo.remove();
+
+  // 隐藏静态图，插入视频
+  catFaceRef.style.display = 'none';
+
+  const video = document.createElement('video');
+  video.src = videoSrc;
+  video.autoplay = true;
+  video.loop = true;
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.style.cssText = 'width:80px;height:80px;object-fit:contain;display:block;border-radius:50%';
+  video.onerror = function() {
+    this.remove();
+    catFaceRef.style.display = 'block';
+  };
+  catBallRef.insertBefore(video, catFaceRef);
+
+  // 强制播放
+  video.play().catch(() => {});
+
+  // CSS 动画
+  catBallRef.classList.remove('bounce','rolling','spinning','walking');
+  void catBallRef.offsetWidth;
+  switch(cmdId) {
+    case 'roll': catBallRef.classList.add('rolling'); break;
+    case 'jump': catBallRef.classList.add('bounce'); break;
+    case 'muscle': catBallRef.classList.add('spinning'); break;
+    case 'walk': catBallRef.classList.add('walking'); break;
+    default: catBallRef.classList.add('bounce'); break;
+  }
+
+  showBubble('🎮', '执行动作：' + label, 3000);
+
+  // 播完恢复
+  cmdVideoTimer = setTimeout(() => {
+    catBallRef.classList.remove('bounce','rolling','spinning','walking');
+    const v = catBallRef.querySelector('video');
+    if (v) v.remove();
+    catFaceRef.style.display = 'block';
+    anim('blink');
+  }, DURATION);
+}
+
+// ====== 猫咪点击 ======
+function quickTap() {
+  const now = Date.now();
+  if (now - lastTapTime < 400) {
+    tapCount++;
+    catBallRef.classList.add('bounce');
+    setTimeout(() => catBallRef.classList.remove('bounce'), 600);
+    if (tapCount >= 20) {
+      tapCount = 0;
+      const msgs = ['铲屎官为什么一直摸朕？！','再摸就要收费了！一次一条小鱼干🐟','好痒哈哈哈别摸了～','喵了个咪的！你手不酸吗？'];
+      showBubble(meow(), msgs[Math.floor(Math.random()*msgs.length)], 4000);
+      anim('black');
+      setTimeout(() => anim('blink'), 3000);
+      toast('🎁 彩蛋触发！');
+    }
+  }
+  lastTapTime = now;
+  setTimeout(() => { if (Date.now() - lastTapTime > 1000) tapCount = 0; }, 1000);
+}
+
+// 双击猫头
+catBallRef.addEventListener('click', (e) => {
+  const now = Date.now();
+  if (now - (catBallRef._lastClick||0) < 350) {
+    catBallRef.classList.add('bounce');
+    setTimeout(() => catBallRef.classList.remove('bounce'), 600);
+    showBubble(meow(), isNight() ?
+      '夜深了，铲屎官在想什么呢？🌙' :
+      '铲屎官来啦～想和本喵聊什么？😸', 5000);
+  }
+  catBallRef._lastClick = now;
+});
+
+// ====== 聊天 ======
+function addChatMsg(type, text, author) {
+  const el = $('chat-msgs');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + type;
+  if (author && (type === 'other' || type === 'mine')) {
+    div.innerHTML = `<span class="cma">${author}</span><br>${text}`;
+  } else {
+    div.textContent = text;
+  }
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+$('btn-send').addEventListener('click', doSendChat);
+$('chat-input').addEventListener('keydown', e => { if(e.key==='Enter') doSendChat(); });
+
+function doSendChat() {
+  const input = $('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({type:'chat',data:{text}}));
+    addChatMsg('mine', text, '我（广播）');
+    showBubble('💬', '广播：'+text, 3000);
+    setCatMood(detectMood(text));
+  } else {
+    toast('⚠️ 未连接服务器');
+  }
+  input.value = '';
+  input.focus();
+}
+
+// ====== WebSocket + 轮询双通道 ======
+let connected = false;
+let lastPollTs = 0;
+let pollTimer = null;
+let wsFailCount = 0;
+
+function connectWS() {
+  if (ws) { try { ws.close(); } catch(e) {} }
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    connected = true;
+    wsFailCount = 0;
+    $('server-status').textContent = '🟢 在线 (WS)';
+    ws.send(JSON.stringify({type:'login',data:{uid:myUid,name:myName}}));
+    ws.send(JSON.stringify({
+      type:'announce',
+      data:{message:myName+' 上线了！🐱',emoji:'🐱'}
+    }));
+    addChatMsg('system','🟢 已连接到猫咪派对！');
+    // 停止轮询（WS 工作正常）
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      const {type, data, ts} = msg;
+      switch(type) {
+        case 'online_list':
+          onlineUsers = (data||[]).filter(u => u.uid !== myUid);
+          $('online-count').textContent = onlineUsers.length;
+          renderOthers();
+          break;
+        case 'user_online':
+          if (data.uid !== myUid) {
+            if (!onlineUsers.find(u => u.uid === data.uid)) onlineUsers.push(data);
+            $('online-count').textContent = onlineUsers.length;
+            renderOthers();
+            addChatMsg('system','🟢 '+data.name+' 上线了！');
+            showBubble('🐱', data.name+' 上线了！猫咪来啦～', 3000);
+          }
+          break;
+        case 'user_offline':
+          onlineUsers = onlineUsers.filter(u => u.uid !== data.uid);
+          if (selectedFriend && selectedFriend.uid === data.uid) selectedFriend = null;
+          $('online-count').textContent = onlineUsers.length;
+          renderOthers();
+          addChatMsg('system','🔴 '+data.name+' 下线了');
+          $('btn-relay-main').style.display = 'none';
+          break;
+        case 'receive_command':
+          if (data.toUid === myUid) {
+            const cmdNames = (data.commands||[]).map(c => {
+              const f = CMD_TYPES.find(x => x.id === c);
+              return f ? f.label : c;
+            }).join('、');
+            addChatMsg('system','🎮 '+data.fromName+' 让你的猫咪：'+cmdNames);
+            showBubble('🐱', data.fromName+' 让猫猫：'+cmdNames+'！', 5000);
+            let d = 0;
+            (data.commands||[]).forEach(c => { setTimeout(() => playCmdAnim(c), d); d += 3500; });
+          }
+          break;
+        case 'receive_relay':
+          if (data.toUid === myUid) {
+            addChatMsg('other', data.message, data.fromName+'（传话）');
+            showBubble('💬', data.fromName+' 说：'+data.message, 6000);
+          }
+          break;
+        case 'receive_chat':
+          addChatMsg('other', data.text, data.fromName);
+          showBubble('💬', data.fromName+': '+data.text, 4000);
+          break;
+        case 'agent_announce':
+          addChatMsg('system','📢 '+(data.emoji||'🤖')+' '+data.fromName+': '+data.message);
+          break;
+        case 'pong': break;
+      }
+    } catch(e) { console.warn('WS msg err:',e); }
+  };
+
+  ws.onclose = () => {
+    connected = wsFailCount > 2 ? false : true;
+    wsFailCount++;
+    $('server-status').textContent = wsFailCount > 2 ? '🔴 WS断开，轮询中...' : '🟡 重连中...';
+    setTimeout(connectWS, wsFailCount > 5 ? 5000 : 1500);
+    // 轮询兜底
+    if (!pollTimer) startPollFallback();
+  };
+
+  ws.onerror = () => {
+    wsFailCount++;
+    if (!pollTimer) startPollFallback();
+  };
+}
+
+function startPollFallback() {
+  if (pollTimer) return;
+  lastPollTs = Date.now();
+  $('server-status').textContent = '🟡 轮询模式 (WS断开)';
+
+  async function doPoll() {
+    try {
+      const res = await fetch(API_BASE + '/api/poll?uid=' + encodeURIComponent(myUid) + '&since=' + lastPollTs);
+      if (!res.ok) throw new Error('poll failed');
+      const data = await res.json();
+      lastPollTs = data.server_ts || Date.now();
+
+      if (data.online && data.online.length > 0) {
+        const newOnline = data.online.filter(u => u.uid !== myUid);
+        onlineUsers = newOnline;
+        $('online-count').textContent = onlineUsers.length;
+        renderOthers();
+      }
+
+      if (data.msgs && data.msgs.length > 0) {
+        data.msgs.forEach(m => {
+          if (m.fromUid === myUid) return;
+          processPollMsg(m.type, m);
+        });
+      }
+    } catch(e) {
+      console.warn('Poll err:', e);
+    }
+    pollTimer = setTimeout(doPoll, 2000);
+  }
+  doPoll();
+}
+
+function processPollMsg(type, data) {
+  switch(type) {
+    case 'user_online':
+      if (data.fromUid && data.fromUid !== myUid && !onlineUsers.find(u => u.uid === data.fromUid)) {
+        onlineUsers.push({uid: data.fromUid, name: data.fromName});
+        $('online-count').textContent = onlineUsers.length;
+        renderOthers();
+        addChatMsg('system','🟢 '+data.fromName+' 上线了！');
+        showBubble('🐱', data.fromName+' 上线了！', 3000);
+      }
+      break;
+    case 'receive_command':
+      if (data.toUid === myUid) {
+        const cmdNames = (data.commands||[]).map(c => {
+          const f = CMD_TYPES.find(x => x.id === c);
+          return f ? f.label : c;
+        }).join('、');
+        addChatMsg('system','🎮 '+data.fromName+' 让你的猫咪：'+cmdNames);
+        showBubble('🐱', data.fromName+' 让猫猫：'+cmdNames+'！', 5000);
+        let d = 0;
+        (data.commands||[]).forEach(c => { setTimeout(() => playCmdAnim(c), d); d += 3500; });
+      }
+      break;
+    case 'receive_relay':
+      if (data.toUid === myUid) {
+        addChatMsg('other', data.message, data.fromName+'（传话）');
+        showBubble('💬', data.fromName+' 说：'+data.message, 6000);
+      }
+      break;
+    case 'receive_chat':
+      addChatMsg('other', data.text, data.fromName);
+      showBubble('💬', data.fromName+': '+data.text, 4000);
+      break;
+    case 'agent_announce':
+      addChatMsg('system','📢 '+(data.emoji||'🤖')+' '+data.fromName+': '+data.message);
+      break;
+  }
+}
+
+// ====== 发送指令 ======
+function sendCommands(toUid, commands) {
+  if (!toUid || !commands.length) return;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({type:'command',data:{toUid,commands}}));
+  } else {
+    toast('⚠️ 连接已断开，请等待重连');
+    return;
+  }
+  const labels = commands.map(c => {
+    const f = CMD_TYPES.find(x => x.id === c);
+    return f ? f.label : c;
+  }).join('、');
+  addChatMsg('system','🎮 你让对方猫咪：'+labels);
+  let d = 0;
+  commands.forEach(c => { setTimeout(() => playCmdAnim(c), d); d += 3500; });
+  toast('✅ 指令已发送！');
+}
+
+function sendRelayMsg(toUid, message) {
+  if (!toUid || !message.trim()) return;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({type:'relay',data:{toUid,message:message.trim()}}));
+  } else {
+    toast('⚠️ 连接已断开，请等待重连');
+    return;
+  }
+  addChatMsg('mine', message.trim(), '我传话给TA');
+  toast('📨 传话已发送！');
+}
+
+// ====== 渲染其他猫咪 ======
+function renderOthers() {
+  const el = $('others-row');
+  if (!onlineUsers.length) {
+    el.innerHTML = '<div style="color:#ccc;font-size:12px;padding:8px;">🐱 等待好友上线...分享链接邀请朋友吧！</div>';
+    return;
+  }
+  el.innerHTML = onlineUsers.map(u => {
+    const sel = selectedFriend && selectedFriend.uid === u.uid;
+    return `<div class="other-cat${sel?' selected':''}" id="oc-${u.uid}">
+      <div class="oc-avatar">
+        <img src="assets/animations/idle_blink.gif" alt="猫" draggable="false">
+      </div>
+      <div class="oc-info">
+        <div class="oc-name">${u.name}</div>
+        <div class="oc-status">🟢 在线</div>
+        <div class="oc-actions">
+          <button class="oc-btn" onclick="event.stopPropagation();selectFriend('${u.uid}','${u.name}');openCmdModal();">🎮 指令</button>
+          <button class="oc-btn relay-btn" onclick="event.stopPropagation();selectFriend('${u.uid}','${u.name}');openRelayModal();">💬 传话</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 点击卡片选中
+  el.querySelectorAll('.other-cat').forEach(card => {
+    card.addEventListener('click', function() {
+      const uid = this.id.replace('oc-','');
+      const u = onlineUsers.find(x => x.uid === uid);
+      if (u) selectFriend(uid, u.name);
+    });
+  });
+}
+
+function selectFriend(uid, name) {
+  selectedFriend = {uid, name};
+  document.querySelectorAll('.other-cat').forEach(c => {
+    c.classList.toggle('selected', c.id === 'oc-'+uid);
+  });
+  $('btn-relay-main').style.display = 'inline-block';
+  $('btn-relay-main').textContent = '💬 传话给'+name;
+  showBubble('👋', '选中了 '+name+'，现在可以发指令或传话啦～', 2500);
+}
+
+// ====== 快捷动作按钮 ======
+function renderQuickActions() {
+  $('quick-actions').innerHTML = CMD_TYPES.map(c => `
+    <button class="quick-btn" id="qb-${c.id}" onclick="quickCmd('${c.id}')">
+      <span>${c.emoji}</span> ${c.label}
+    </button>
+  `).join('');
+}
+function quickCmd(cmdId) {
+  if (!selectedFriend) { toast('⚠️ 请先在"在线猫咪"中选中一个好友'); return; }
+  sendCommands(selectedFriend.uid, [cmdId]);
+  const btn = document.getElementById('qb-'+cmdId);
+  if (btn) { btn.classList.add('sent'); setTimeout(() => btn.classList.remove('sent'), 400); }
+}
+
+// ====== 指令多选弹窗 ======
+function openCmdModal() {
+  if (!selectedFriend) { toast('⚠️ 请先选择好友'); return; }
+  cmdSelections = [];
+  modalBox.innerHTML = `
+    <div class="mh">
+      <span class="mt">🎮 发给 ${selectedFriend.name} 的小猫</span>
+      <button class="mx" onclick="closeModal()">✕</button>
+    </div>
+    <div style="font-size:11px;color:#999;margin-bottom:10px;">可多选指令，猫咪依次执行～</div>
+    ${CMD_TYPES.map(c => `
+      <div class="cmd-option" id="cmd-opt-${c.id}" onclick="toggleCmd('${c.id}')">
+        <video class="co-gif" autoplay loop muted playsinline preload="metadata" src="assets/gifs/${encodeURIComponent(c.mp4)}"></video>
+        <div class="co-info">
+          <div class="co-label">${c.label}</div>
+          <div class="co-desc">${c.desc}</div>
+        </div>
+        <span class="co-check">✓</span>
+      </div>
+    `).join('')}
+    <button class="modal-send-btn" id="cmd-send-btn" disabled onclick="sendSelectedCmds()">至少选一个指令</button>
+  `;
+  modal.classList.add('open');
+}
+function closeModal() { modal.classList.remove('open'); cmdSelections = []; }
+function toggleCmd(cmdId) {
+  const idx = cmdSelections.indexOf(cmdId);
+  if (idx >= 0) cmdSelections.splice(idx,1);
+  else cmdSelections.push(cmdId);
+  CMD_TYPES.forEach(c => {
+    const opt = document.getElementById('cmd-opt-'+c.id);
+    if (opt) opt.classList.toggle('selected', cmdSelections.includes(c.id));
+  });
+  const btn = $('cmd-send-btn');
+  btn.disabled = cmdSelections.length === 0;
+  btn.textContent = cmdSelections.length === 0 ? '至少选一个指令' : `发送 ${cmdSelections.length} 个指令 →`;
+}
+function sendSelectedCmds() {
+  if (!selectedFriend || !cmdSelections.length) return;
+  sendCommands(selectedFriend.uid, [...cmdSelections]);
+  closeModal();
+}
+
+// ====== 传话弹窗 ======
+$('btn-relay-main').addEventListener('click', () => {
+  if (!selectedFriend) { toast('⚠️ 请先选择好友'); return; }
+  openRelayModal();
+});
+
+function openRelayModal() {
+  if (!selectedFriend) return;
+  modalBox.innerHTML = `
+    <div class="mh">
+      <span class="mt">💬 给 ${selectedFriend.name} 传话</span>
+      <button class="mx" onclick="closeModal()">✕</button>
+    </div>
+    <textarea class="relay-textarea" id="relay-msg" placeholder="输入想说的话...&#10;好友的猫咪会弹出对话框转达哦～" maxlength="300"></textarea>
+    <button class="modal-send-btn" style="background:#8E24AA" onclick="doSendRelay()">📨 发送传话</button>
+    <div class="relay-hint">💡 格式：好友猫咪会看到"XX让我告诉你：..."</div>
+    <div class="sched-row">
+      <span style="font-size:10px;color:#999;white-space:nowrap;">⏰ 定时:</span>
+      <input id="relay-sched-time" placeholder="例: 2026-06-07 14:30" style="flex:1">
+      <button onclick="scheduleRelay()">设置</button>
+    </div>
+  `;
+  modal.classList.add('open');
+  setTimeout(() => { const ta = document.getElementById('relay-msg'); if(ta) ta.focus(); }, 200);
+}
+
+function doSendRelay() {
+  const ta = document.getElementById('relay-msg');
+  if (!ta || !ta.value.trim() || !selectedFriend) return;
+  sendRelayMsg(selectedFriend.uid, ta.value.trim());
+  closeModal();
+}
+
+function scheduleRelay() {
+  const ta = document.getElementById('relay-msg');
+  const st = document.getElementById('relay-sched-time');
+  if (!st || !st.value.trim()) { toast('⚠️ 请输入定时时间'); return; }
+  const msg = ta ? ta.value.trim() : '';
+  closeModal();
+  // 简单定时（浏览器端 setTimeout）
+  const target = new Date(st.value.trim()).getTime();
+  const now = Date.now();
+  if (isNaN(target)) { toast('⚠️ 时间格式不对，例: 2026-06-07 14:30'); return; }
+  const delay = target - now;
+  if (delay <= 0) { toast('⚠️ 时间已过，请设置未来时间'); return; }
+  if (delay > 86400000) { toast('⚠️ 最多设置24小时内'); return; }
+  setTimeout(() => {
+    if (selectedFriend && ws && ws.readyState === WebSocket.OPEN && msg) {
+      sendRelayMsg(selectedFriend.uid, '⏰ 定时传话：'+msg);
+    }
+  }, delay);
+  toast('✅ 定时传话已设置，' + new Date(target).toLocaleTimeString('zh-CN') + ' 发送');
+  addChatMsg('system', '⏰ 定时传话已设置：'+new Date(target).toLocaleString('zh-CN'));
+}
+
+// ====== 功能面板 ======
+function openPanel(type) {
+  if (modal.classList.contains('open') && modal._panelType === type) {
+    closeModal(); return;
+  }
+  modal._panelType = type;
+  let html = '';
+
+  if (type === 'menu') {
+    html = `<div class="mh"><span class="mt">🐱 菜单</span><button class="mx" onclick="closeModal()">✕</button></div>
+    <div class="menu-bar" style="flex-direction:column">
+      <button class="menu-btn moments" onclick="openPanel('moments')" style="width:100%;margin-bottom:6px">🐱 朋友圈</button>
+      <button class="menu-btn friends" onclick="openPanel('friends')" style="width:100%;margin-bottom:6px">👥 好友列表</button>
+      <button class="menu-btn schedule" onclick="openPanel('schedule')" style="width:100%;margin-bottom:6px">📅 日程</button>
+    </div>`;
+  } else if (type === 'moments') {
+    html = `<div class="mh"><span class="mt">🐱 朋友圈</span><button class="mx" onclick="closeModal()">✕</button></div>
+    <div class="inprow"><input id="mi" placeholder="分享猫咪趣事..."><button style="background:#FF6B6B" onclick="postMoment()">发布</button></div>
+    <div style="margin-top:8px;">`;
+    moments.forEach(m => {
+      html += `<div class="post"><div class="phd"><span class="pav">🐱</span><span class="pnm">${m.author}</span><span class="ptm">${m.time}</span></div>
+      <div class="ptxt">${m.text}</div><div class="plk" onclick="toggleLike('${m.id}')">${m.liked?'❤️':'🤍'} ${m.likes}</div></div>`;
+    });
+    html += '</div>';
+  } else if (type === 'friends') {
+    html = `<div class="mh"><span class="mt">👥 好友</span><button class="mx" onclick="closeModal()">✕</button></div>
+    <div class="inprow"><input placeholder="搜索用户名..."><button style="background:#4CAF50" onclick="toast('已发送好友请求(Demo)')">+</button></div>
+    <div style="margin-top:8px;">`;
+    // 在线用户
+    onlineUsers.forEach(u => {
+      html += `<div class="fr-item">
+        <span class="frav">🐱</span>
+        <span class="frnm">${u.name} 🟢</span>
+        <span class="fract cmd-btn" onclick="selectFriend('${u.uid}','${u.name}');closeModal();openCmdModal();">🎮 指令</span>
+        <span class="fract relay-btn" onclick="selectFriend('${u.uid}','${u.name}');closeModal();openRelayModal();">💬 传话</span>
+      </div>`;
+    });
+    // 离线好友
+    friendsList.filter(f => !onlineUsers.find(u => u.name === f.name)).forEach(f => {
+      html += `<div class="fr-item">
+        <span class="frav">${f.av}</span>
+        <span class="frnm">${f.name} ⬜ 离线</span>
+      </div>`;
+    });
+    html += '</div>';
+  } else if (type === 'schedule') {
+    html = `<div class="mh"><span class="mt">📅 日程</span><button class="mx" onclick="closeModal()">✕</button></div>
+    <div class="inprow"><input id="st" placeholder="任务"><input id="sm" value="09:00" style="width:60px"><button style="background:#FF9800" onclick="addSched()">+</button></div>
+    <div style="margin-top:8px;">`;
+    if (!scheds.length) html += '<div style="text-align:center;color:#ccc;padding:14px;">暂无日程</div>';
+    else scheds.sort((a,b)=>a.time.localeCompare(b.time)).forEach(s => {
+      html += `<div class="sch-item">
+        <span class="schk" style="cursor:pointer" onclick="toggleSched('${s.id}')">${s.done?'✅':'⬜'}</span>
+        <span class="sctm">${s.time}</span>
+        <span class="sctt${s.done?' done':''}">${s.title}</span>
+        <span class="scdel" onclick="delSched('${s.id}')">✕</span>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  modalBox.innerHTML = html;
+  modal.classList.add('open');
+}
+
+// 朋友圈操作
+function postMoment() {
+  const inp = document.getElementById('mi');
+  if (!inp || !inp.value.trim()) return;
+  moments.unshift({id:genId(),author:myName||'我',text:inp.value.trim(),time:'刚刚',likes:0,liked:false});
+  openPanel('moments');
+}
+
+function toggleLike(id) {
+  const m = moments.find(x => x.id === id);
+  if (m) { m.liked = !m.liked; m.likes += m.liked ? 1 : -1; openPanel('moments'); }
+}
+
+// 日程操作
+function addSched() {
+  const t = document.getElementById('st'), m = document.getElementById('sm');
+  if (!t || !t.value.trim()) return;
+  scheds.push({id:genId(),title:t.value.trim(),time:m?.value||'09:00',done:false});
+  openPanel('schedule');
+}
+function toggleSched(id) {
+  const s = scheds.find(x => x.id === id);
+  if (s) { s.done = !s.done; openPanel('schedule'); }
+}
+function delSched(id) {
+  scheds = scheds.filter(x => x.id !== id);
+  openPanel('schedule');
+}
+
+// ====== 自动演示 ======
+async function autoDemo() {
+  if (isDemo) return;
+  if (!connected) { toast('⚠️ 请先连接服务器'); return; }
+  isDemo = true;
+  addChatMsg('system','🎬 自动演示开始...');
+  toast('🎬 自动演示中...');
+
+  let i = 0;
+  async function nxt() {
+    if (i >= DEMO_SCRIPT.length) {
+      isDemo = false;
+      addChatMsg('system','✅ 自动演示完成！');
+      return;
+    }
+    const text = DEMO_SCRIPT[i];
+    showBubble('💭', text, 2000);
+    setTimeout(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({type:'chat',data:{text}}));
+      }
+      addChatMsg('mine', text, '我（演示）');
+      i++;
+      setTimeout(nxt, 2000);
+    }, 2500);
+  }
+  nxt();
+}
+
+// ====== 彩蛋按钮 ======
+$('egg-btn').addEventListener('click', () => {
+  anim('egg');
+  showBubble('🎁', '恭喜发现彩蛋！🐱 猫猫送你一个隐藏祝福～分享链接叫更多朋友来玩吧！', 6000);
+  catBallRef.classList.add('bounce');
+  setTimeout(() => { catBallRef.classList.remove('bounce'); anim('blink'); }, 700);
+  navigator.clipboard.writeText(location.href).then(() => toast('📋 链接已复制！发给朋友吧～'))
+    .catch(() => toast('🔗 链接在地址栏，手动复制吧～'));
+});
+$('name-btn').addEventListener('click', () => {
+  const nn = prompt('给你的猫咪起个新名字吧：', myName);
+  if (nn && nn.trim()) {
+    myName = nn.trim();
+    localStorage.setItem('meow_name', myName);
+    $('cat-name-tag').textContent = '🐱 ' + myName;
+    document.title = '🐱 ' + myName + ' — 喵了个咪';
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({type:'login',data:{uid:myUid,name:myName}}));
+    }
+    toast('✅ 改名成功！你现在叫 ' + myName);
+  }
+});
+$('copy-btn').addEventListener('click', () => {
+  navigator.clipboard.writeText(location.href).then(() => toast('📋 链接已复制！'))
+    .catch(() => toast('🔗 请手动复制地址栏链接'));
+});
+
+// ====== 关闭弹窗（点击背景） ======
+modal.addEventListener('click', (e) => {
+  if (e.target === modal) closeModal();
+});
+
+// ====== 初始化 ======
+function init() {
+  // UID
+  myUid = localStorage.getItem('meow_share_uid');
+  if (!myUid) {
+    myUid = 'cat_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+    localStorage.setItem('meow_share_uid', myUid);
+  }
+  // 名字
+  myName = localStorage.getItem('meow_name');
+  if (!myName) {
+    myName = prompt('给你的猫咪起个名字吧：', '小咪');
+    if (!myName) myName = '猫咪'+Math.floor(Math.random()*100);
+    localStorage.setItem('meow_name', myName);
+  }
+
+  $('cat-name-tag').textContent = '🐱 ' + myName;
+  document.title = '🐱 ' + myName + ' — 喵了个咪 · 多人派对';
+
+  // 渲染
+  renderQuickActions();
+  scheduleIdle();
+
+  // 连接（WebSocket + 轮询兜底）
+  connectWS();
+
+  // 夜间提示
+  if (isNight()) {
+    setTimeout(() => showBubble('🌙', '夜深了...但猫咪永远醒着陪你～', 5000), 3000);
+  }
+}
+
+init();
+</script>
 </body>
 </html>
