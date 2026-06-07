@@ -11,13 +11,14 @@
     "demo": "node agent-server.js & sleep 1 && bash open-dual-agents.sh",
     "open-agents": "bash open-dual-agents.sh",
     "build": "electron-builder --mac --x64",
-    "build:win": "electron-builder --win --x64"
+    "build:win": "electron-builder --win --x64",
+    "vercel-build": "echo 'No build needed for static deployment'"
   },
   "dependencies": {
-    "electron": "^28.3.3",
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "electron": "^28.3.3",
     "electron-builder": "^24.0.0"
   },
   "build": {
