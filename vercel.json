@@ -1,17 +1,8 @@
 {
-  "builds": [
+  "rewrites": [
     {
-      "src": "share.html",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/",
-      "dest": "/share.html"
-    },
-    {
-      "handle": "filesystem"
+      "source": "/",
+      "destination": "/share.html"
     }
   ]
 }
